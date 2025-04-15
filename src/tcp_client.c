@@ -4,6 +4,8 @@
 #include "lwip/netdb.h"
 #include "esp_log.h"
 
+static const uint32_t sleepTime = 1000/portTICK_PERIOD_MS;
+
 void tcp_client_task(void *pvParameters)
 {
     char *host_ip = HOST_IP;
