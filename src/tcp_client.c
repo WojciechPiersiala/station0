@@ -2,6 +2,7 @@
 
 #include "lwip/sockets.h"
 #include "lwip/netdb.h"
+#include "esp_log.h"
 
 void tcp_client_task(void *pvParameters)
 {

@@ -12,26 +12,8 @@
 #include "lwip/sys.h"
 
 
-
 #include "wifi.h"
 #include "tcp_client.h"
-
-
-
-
-/* FreeRTOS event group to signal when we are connected*/
-static EventGroupHandle_t s_wifi_event_group;
-
-/* The event group allows multiple bits for each event, but we only care about two events:
- * - we are connected to the AP with an IP
- * - we failed to connect after the maximum amount of retries */
-
-
-static const char *TAG = "wifi station";
-
-static int s_retry_num = 0;
-
-
 
 
 void app_main(void)
@@ -44,7 +26,7 @@ void app_main(void)
     }
     ESP_ERROR_CHECK(ret);
 
-    ESP_LOGI(TAG, "ESP_WIFI_MODE_STA");
+    ESP_LOGI("", "ESP_WIFI_MODE_STA");
     wifi_init_sta();
     xTaskCreate(tcp_client_task, "tcp_client", 2048, NULL, 5, NULL);
 }
