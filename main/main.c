@@ -19,10 +19,15 @@
 
 
 void init_i2s(){
+    char *tag = "i2s";
+    ESP_LOGI(tag,"initialisation");
+    ESP_LOGI(tag,"assign pin %d", I2S_DAT_PIN);
     i2s_chan_handle_t rx_chan;
-    i2s_chan_config_t chan_cfg = I2S_CHANNEL_DEFAULT_CONFIG(I2S_DAT_PIN, I2S_ROLE_MASTER);
-    i2s_new_channel(&chan_cfg, &rx_chan, NULL);
+    i2s_chan_config_t chan_cfg = I2S_CHANNEL_DEFAULT_CONFIG(I2S_NUM_0, I2S_ROLE_MASTER);
+    ESP_LOGI(tag,"create new channel");
+    i2s_new_channel(&chan_cfg, NULL, &rx_chan);
 
+    ESP_LOGI(tag,"create default configuration");
     i2s_std_config_t std_cfg = {
         .clk_cfg = I2S_STD_CLK_DEFAULT_CONFIG(16000),
         .slot_cfg = I2S_STD_MSB_SLOT_DEFAULT_CONFIG(I2S_DATA_BIT_WIDTH_32BIT, I2S_SLOT_MODE_MONO),
@@ -39,7 +44,9 @@ void init_i2s(){
             },
         },
     };
+    ESP_LOGI(tag,"init standard mode");
     i2s_channel_init_std_mode(rx_chan, &std_cfg);
+    ESP_LOGI(tag,"enable channel");
     i2s_channel_enable(rx_chan);
     ESP_LOGI("I2S", "I2S microphone initialized");
 }
@@ -48,7 +55,7 @@ void init_i2s(){
 void taskMic(void *a){
     init_i2s();
     while(1){
-        
+
     }
 }
     // //set up i2s processor
@@ -86,7 +93,7 @@ void taskMic(void *a){
 //     // vTaskDelay(sleepTime);
 //     ESP_LOGI(tag, "GPIO34: %d", val);
 // }
-}
+
 
 void app_main(void)
 {
