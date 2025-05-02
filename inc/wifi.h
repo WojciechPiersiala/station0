@@ -2,8 +2,14 @@
 
 #include "esp_wifi.h"
 
-#define EXAMPLE_ESP_WIFI_SSID "TCL-5J3J-2.4GHz"
-#define EXAMPLE_ESP_WIFI_PASS "G6hgv9Tq396k"
+#define ESP_WIFI_SSID_1 "INEA-54D4_2.4G"
+#define ESP_WIFI_PASS_1 "KqkmRCph"
+
+#define ESP_WIFI_SSID_2 "TCL-5J3J-2.4GHz"
+#define ESP_WIFI_PASS_2 "G6hgv9Tq396k"
+
+#define ESP_WIFI_SSID ESP_WIFI_SSID_1
+#define ESP_WIFI_PASS ESP_WIFI_PASS_1
 #define EXAMPLE_ESP_MAXIMUM_RETRY  CONFIG_ESP_MAXIMUM_RETRY
 
 #if CONFIG_ESP_WPA3_SAE_PWE_HUNT_AND_PECK
@@ -37,4 +43,8 @@
 #define WIFI_CONNECTED_BIT BIT0
 #define WIFI_FAIL_BIT      BIT1
 
+#define TAG "wifi"
+
 void wifi_init_sta(void);
+
+const char* get_ip_str(void);

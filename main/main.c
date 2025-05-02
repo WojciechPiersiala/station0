@@ -95,8 +95,7 @@ void taskMic(void *a){
 // }
 
 
-void app_main(void)
-{
+void app_main(void){
     //Initialize NVS
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
@@ -110,5 +109,5 @@ void app_main(void)
     xTaskCreate(tcp_client_task, "tcp_client", 2048, NULL, 5, NULL);
 
     // gpio_set_direction(2, GPIO_MODE_OUTPUT);
-    xTaskCreate(taskMic, "Mic", 2048, NULL, 0, NULL); //task, debugName, size, args, priority
+    // xTaskCreate(taskMic, "Mic", 2048, NULL, 0, NULL); //task, debugName, size, args, priority
 }

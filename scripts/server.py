@@ -1,17 +1,71 @@
 import socket
+import threading
+import time 
 
-HOST = '0.0.0.0'
-PORT = 8080
+PORT = 5050
+SERVER = socket.gethostbyname(socket.gethostname())
+HEADER = 64
+FORMAT = "utf-8"
+DISCONNECT_MSG = "!DISCONNECT"
+ADDR = (SERVER, PORT)
+TIMEOUT = 5
 
-with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-    s.bind((HOST, PORT))
-    s.listen()
-    print(f"Listening on port {PORT}...")
-    conn, addr = s.accept()
-    with conn:
-        print(f"Connected by {addr}")
-        while True:
-            data = conn.recv(1024)
-            if not data:
-                break
-            print("Received:", data.decode())
+server = socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM)
+server.settimeout(TIMEOUT)
+
+server.bind(ADDR)
+
+
+def handle_client(conn, addr):
+    print(f"[NEW CONNECTION] {addr} connected.") 
+    
+    connected = True
+    while connected:
+        msg_length = conn.recv(HEADER).decode(FORMAT)
+        if msg_length:
+            msg_length = int(msg_length)
+
+            msg = conn.recv(msg_length).decode(FORMAT)
+
+            if msg == DISCONNECT_MSG:
+                connected = False
+            print(f"{addr}: {msg}")
+
+    conn.close()
+
+
+# def handle_keyboard():
+#     while True:
+#         time.sleep(1)
+#         print("test")
+#         # server.close()
+#         # exit
+
+
+def start():
+    try:
+        server.listen()
+    except TimeoutError:
+        print("timeout error")
+        return 
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        return 
+
+    # thread_keyboard= threading.Thread(target=handle_keyboard)
+    # thread_keyboard.start()
+
+    print(f"[LISTENING], sever is listening on {SERVER}")
+    while True:
+        try:
+            conn, addr = server.accept()
+            thread_server= threading.Thread(target=handle_client, args=(conn, addr))
+            thread_server.start()
+
+            print(f"[ACTIVE CONNECTIONS] {threading.active_count() - 1}")   
+        except socket.timeout:
+            continue
+
+
+print("[STARTING], server is starting ...")
+start()
