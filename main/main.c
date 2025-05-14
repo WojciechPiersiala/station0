@@ -106,7 +106,7 @@ void app_main(void){
 
     ESP_LOGI("", "ESP_WIFI_MODE_STA");
     wifi_init_sta();
-    xTaskCreate(tcp_client_task, "tcp_client", 2048, NULL, 5, NULL);
+    xTaskCreate(tcp_client_task, "tcp_client", 4096, NULL, 5, NULL);
 
     // gpio_set_direction(2, GPIO_MODE_OUTPUT);
     // xTaskCreate(taskMic, "Mic", 2048, NULL, 0, NULL); //task, debugName, size, args, priority

@@ -8,8 +8,10 @@
 #define ESP_WIFI_SSID_2 "TCL-5J3J-2.4GHz"
 #define ESP_WIFI_PASS_2 "G6hgv9Tq396k"
 
-#define ESP_WIFI_SSID ESP_WIFI_SSID_1
-#define ESP_WIFI_PASS ESP_WIFI_PASS_1
+// change wifi ssid & password
+#define ESP_WIFI_SSID ESP_WIFI_SSID_2
+#define ESP_WIFI_PASS ESP_WIFI_PASS_2
+
 #define EXAMPLE_ESP_MAXIMUM_RETRY  CONFIG_ESP_MAXIMUM_RETRY
 
 #if CONFIG_ESP_WPA3_SAE_PWE_HUNT_AND_PECK
@@ -43,7 +45,8 @@
 #define WIFI_CONNECTED_BIT BIT0
 #define WIFI_FAIL_BIT      BIT1
 
-#define TAG "wifi"
+// #define TAG "wifi"
+
 
 void wifi_init_sta(void);
 
