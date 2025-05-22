@@ -24,7 +24,12 @@ def handle_client(conn, addr):
         msg_raw = conn.recv(HEADER)
         print("================================")
         print(f"[RAW MESSAGE]: {msg_raw}")
-        msg_length = int(msg_raw.decode().replace('\x00', '').strip())
+        try:
+            msg_length = int(msg_raw.decode().replace('\x00', '').strip())
+        except:
+            print("[INVALID MESSAGE] message skipped")
+            msg_length = False
+            continue
         if msg_length:
             msg_length = int(msg_length)
 

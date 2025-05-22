@@ -18,13 +18,14 @@ void send_with_header(char *payload, int socket){
     uint payload_lenthg = strlen(payload);
     char payload_lenthg_msg[HEADER] = {0};
     snprintf(payload_lenthg_msg, HEADER, "%15d", payload_lenthg);
-    ESP_LOGI(tag, "Message length sent:%s", payload_lenthg_msg);
+    // ESP_LOGI(tag, "Message length sent:%s", payload_lenthg_msg);
     // printf("%s \n",payload_lenthg_msg);
     // send(socket, payload_lenthg_msg, strlen(payload), 0);
     // char *payload2 = "9";
-    send(socket, payload_lenthg_msg, HEADER, 0); 
-    ESP_LOGI(tag, "Message sent:%s", payload_lenthg_msg);
-    // send(socket, payload, strlen(payload), 0);
+    send(socket, payload, HEADER, 0); 
+    ESP_LOGI(tag, "Message lenght sent:%s", payload_lenthg_msg);
+    send(socket, payload, strlen(payload), 0);
+    ESP_LOGI(tag, "Message sent:%s", payload);
     // ESP_LOGI(tag, "Message sent:    %s", payload);
 }
 
@@ -86,8 +87,8 @@ void tcp_client_task(void *pvParameters){
     for(int j=0; j<10; j++){
         // send(sock, payload, strlen(payload), 0);
         // ESP_LOGI(tag, "Message sent:    %s", payload);
-        
-        sprintf(payload, "message %d", j);
+        sprintf(payload, "NEW MESSAGE %d", j);
+        // ESP_LOGI(tag, "message bofore: %s", payload);
         send_with_header(payload, sock);
         // ESP_LOGI(tag, "Message sent:    %s", payload);
 

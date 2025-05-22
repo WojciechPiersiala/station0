@@ -3,14 +3,14 @@ import time
 
 PORT = 5050
 SERVER = socket.gethostbyname(socket.gethostname())
+# SERVER = "192.168.1.4"
 HEADER = 16
 FORMAT = "utf-8"
 DISCONNECT_MSG = "!DISCONNECT"
 ADDR = (SERVER, PORT)
 
 
-client = socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM)
-client.connect(ADDR)
+
 
 
 def send(msg):
@@ -26,7 +26,12 @@ def send(msg):
     print(f"sent string: {message}")
 
 
+
+print(ADDR)
+client = socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM)
+client.connect(ADDR)
 # while True:
+print(ADDR)
 send("Hello worl1!")
 input()
 send("Hello world2!")
