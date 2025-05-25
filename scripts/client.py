@@ -28,6 +28,7 @@ def send(msg):
 
 
 print(ADDR)
+print(f"Server: {SERVER}")
 client = socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM)
 client.connect(ADDR)
 # while True:

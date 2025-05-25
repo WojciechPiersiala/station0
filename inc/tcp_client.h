@@ -8,6 +8,7 @@
 // #define FORMAT "utf-8"
 #define DISCONNECT_MSG "!DISCONNECT"
 #define HEADER 16
+#define PAYLOAD_LEN 256
 // #define PORT 8080
 // #define TAG "tcp"
 

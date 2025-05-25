@@ -13,26 +13,21 @@ static bool retryConnection = true;
 static int connDone = 0;
 
 void send_with_header(char *payload, int socket){
-    // char payload[] = "10";
-    // int payload_lenthg = sizeof(payload) / sizeof(payload[0]);
-    uint payload_lenthg = strlen(payload);
-    char payload_lenthg_msg[HEADER] = {0};
-    snprintf(payload_lenthg_msg, HEADER, "%15d", payload_lenthg);
-    // ESP_LOGI(tag, "Message length sent:%s", payload_lenthg_msg);
-    // printf("%s \n",payload_lenthg_msg);
-    // send(socket, payload_lenthg_msg, strlen(payload), 0);
-    // char *payload2 = "9";
-    send(socket, payload, HEADER, 0); 
-    ESP_LOGI(tag, "Message lenght sent:%s", payload_lenthg_msg);
+    // /* send the message length */
+    // uint payload_lenthg = strlen(payload);
+    // char payload_lenthg_msg[HEADER] = {0};
+    // snprintf(payload_lenthg_msg, HEADER, "%d", payload_lenthg);
+    // send(socket, payload_lenthg_msg, HEADER, 0); 
+    // ESP_LOGI(tag, "Message lenght sent: \"%s\"", payload_lenthg_msg);
+    
+    /* send the actual message */
     send(socket, payload, strlen(payload), 0);
-    ESP_LOGI(tag, "Message sent:%s", payload);
-    // ESP_LOGI(tag, "Message sent:    %s", payload);
+    ESP_LOGI(tag, "Message sent: \"%s\"", payload);
+    // ESP_LOGI(tag, "============== HEADER: %d,  strlen(payload): %d ==============", HEADER, strlen(payload));
 }
 
 
 void tcp_client_task(void *pvParameters){
-    // char *host_ip = DEFAULT_HOST_IP;
-    // const char *host_ip = get_ip_str();
     const char *host_ip = DEFAULT_HOST_IP;
     int port = PORT;
 
@@ -81,20 +76,13 @@ void tcp_client_task(void *pvParameters){
     
     ESP_LOGI(tag, "Successfully connected");
 
+    char payload[PAYLOAD_LEN];
+    for(int j=0; j<3; j++){
 
-     
-    char payload[HEADER];
-    for(int j=0; j<10; j++){
-        // send(sock, payload, strlen(payload), 0);
-        // ESP_LOGI(tag, "Message sent:    %s", payload);
-        sprintf(payload, "NEW MESSAGE %d", j);
-        // ESP_LOGI(tag, "message bofore: %s", payload);
+        sprintf(payload, "Hello from esp32 %d", j);
+
         send_with_header(payload, sock);
-        // ESP_LOGI(tag, "Message sent:    %s", payload);
 
-        // DISCONNECT_MSG
-        // send(sock, payload, strlen(payload), 0);
-        // ESP_LOGI(tag, "Message sent:    %s", payload);
         vTaskDelay(sendSleepTime);
     }
     send_with_header(DISCONNECT_MSG, sock);
