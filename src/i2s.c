@@ -6,12 +6,11 @@
 #include "freertos/task.h"
 
 static i2s_chan_handle_t rx_chan;
+static char *tag = "i2s";
 
 void init_i2s(){
-    char *tag = "i2s";
     ESP_LOGI(tag,"initialisation");
     ESP_LOGI(tag,"assign pin %d", I2S_DAT_PIN);
-    i2s_chan_handle_t rx_chan;
     i2s_chan_config_t chan_cfg = I2S_CHANNEL_DEFAULT_CONFIG(I2S_NUM_0, I2S_ROLE_MASTER);
     ESP_LOGI(tag,"create new channel");
     ESP_ERROR_CHECK(i2s_new_channel(&chan_cfg, NULL, &rx_chan));
@@ -42,7 +41,7 @@ void init_i2s(){
 
 
 
-static void i2s_read_task(void *args)
+void i2s_read_task(void *args)
 {
     uint8_t *r_buf = (uint8_t *)calloc(1, BUFF_SIZE);
     assert(r_buf); // Check if r_buf allocation success
@@ -58,10 +57,10 @@ static void i2s_read_task(void *args)
         /* Read i2s data */
         if (i2s_channel_read(rx_chan, r_buf, BUFF_SIZE, &r_bytes, 1000) == ESP_OK) {
             printf("Read Task: i2s read %d bytes\n-----------------------------------\n", r_bytes);
-            printf("[0] %x [1] %x [2] %x [3] %x\n[4] %x [5] %x [6] %x [7] %x\n\n",
+            printf("[0] %x [1] %x [2] %x [3] %x [4] %x [5] %x [6] %x [7] %x\n\n",
                    r_buf[0], r_buf[1], r_buf[2], r_buf[3], r_buf[4], r_buf[5], r_buf[6], r_buf[7]);
         } else {
-            printf("Read Task: i2s read failed\n");
+            ESP_LOGE(tag, "Read Task: i2s read failed\n");
         }
         vTaskDelay(pdMS_TO_TICKS(200));
     }

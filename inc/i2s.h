@@ -5,4 +5,4 @@
 
 
 void init_i2s();
-static void i2s_read_task(void *args);
+void i2s_read_task(void *args);
