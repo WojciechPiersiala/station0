@@ -9,8 +9,16 @@
 #define ESP_WIFI_PASS_2 "G6hgv9Tq396k"
 
 // change wifi ssid & password
-#define ESP_WIFI_SSID ESP_WIFI_SSID_1
-#define ESP_WIFI_PASS ESP_WIFI_PASS_1
+#define WIFI_NETWORK 2
+#if WIFI_NETWORK == 1
+    #define ESP_WIFI_SSID ESP_WIFI_SSID_1
+    #define ESP_WIFI_PASS ESP_WIFI_PASS_1
+#elif WIFI_NETWORK == 2
+    #define ESP_WIFI_SSID ESP_WIFI_SSID_2
+    #define ESP_WIFI_PASS ESP_WIFI_PASS_2
+#else
+    #error "Invalid WIFI_NETWORK selected! Please define WIFI_NETWORK as 1 or 2."
+#endif
 
 #define EXAMPLE_ESP_MAXIMUM_RETRY  CONFIG_ESP_MAXIMUM_RETRY
 
