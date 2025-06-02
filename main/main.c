@@ -7,57 +7,19 @@
 
 #include "wifi.h"
 #include "tcp_client.h"
+#include "i2s.h"
 
-
-#include "driver/gpio.h"
-#include "driver/i2s_std.h"
-
-#define I2S_DAT_PIN 34
-#define I2S_CLK_PIN 0
 // uint32_t sleepTime = 1/portTICK_PERIOD_MS;
 
 
 
-void init_i2s(){
-    char *tag = "i2s";
-    ESP_LOGI(tag,"initialisation");
-    ESP_LOGI(tag,"assign pin %d", I2S_DAT_PIN);
-    i2s_chan_handle_t rx_chan;
-    i2s_chan_config_t chan_cfg = I2S_CHANNEL_DEFAULT_CONFIG(I2S_NUM_0, I2S_ROLE_MASTER);
-    ESP_LOGI(tag,"create new channel");
-    i2s_new_channel(&chan_cfg, NULL, &rx_chan);
 
-    ESP_LOGI(tag,"create default configuration");
-    i2s_std_config_t std_cfg = {
-        .clk_cfg = I2S_STD_CLK_DEFAULT_CONFIG(16000),
-        .slot_cfg = I2S_STD_MSB_SLOT_DEFAULT_CONFIG(I2S_DATA_BIT_WIDTH_32BIT, I2S_SLOT_MODE_MONO),
-        .gpio_cfg = {
-            .mclk = I2S_GPIO_UNUSED,
-            .bclk = I2S_GPIO_UNUSED,
-            .ws = I2S_CLK_PIN,
-            .dout = I2S_GPIO_UNUSED,
-            .din = I2S_DAT_PIN,
-            .invert_flags = {
-                .mclk_inv = false,
-                .bclk_inv = false,
-                .ws_inv = false,
-            },
-        },
-    };
-    ESP_LOGI(tag,"init standard mode");
-    i2s_channel_init_std_mode(rx_chan, &std_cfg);
-    ESP_LOGI(tag,"enable channel");
-    i2s_channel_enable(rx_chan);
-    ESP_LOGI("I2S", "I2S microphone initialized");
-}
+// void taskMic(void *a){
+//     init_i2s();
+//     while(1){
 
-
-void taskMic(void *a){
-    init_i2s();
-    while(1){
-
-    }
-}
+//     }
+// }
     // //set up i2s processor
     // const i2s_config_t i2s_config =  {
     //     .mode = (I2S_MODE_MASTER | I2S_MODE_RX),
@@ -87,7 +49,7 @@ void taskMic(void *a){
 // while(1){
 //     // gpio_set_level(2, 34);
 //     uint16_t val = gpio_get_level(134);
-//     vTaskDelay(sleepTime);
+    // vTaskDelay(sleepTime);
 
 //     // gpio_set_level(2, 1);
 //     // vTaskDelay(sleepTime);
@@ -105,8 +67,14 @@ void app_main(void){
     ESP_ERROR_CHECK(ret);
 
     ESP_LOGI("", "ESP_WIFI_MODE_STA");
+
+    /* wifi, tcp connection*/
     wifi_init_sta();
     xTaskCreate(tcp_client_task, "tcp_client", 4096, NULL, 5, NULL);
+
+    /* microphone*/
+    init_i2s();
+    xTaskCreate(i2s_read_task, "i2s_example_read_task", 4096, NULL, 5, NULL);
 
     // gpio_set_direction(2, GPIO_MODE_OUTPUT);
     // xTaskCreate(taskMic, "Mic", 2048, NULL, 0, NULL); //task, debugName, size, args, priority
