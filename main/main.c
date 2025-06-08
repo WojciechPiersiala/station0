@@ -27,8 +27,8 @@ void app_main(void){
     xTaskCreate(tcp_client_task, "tcp_client", 4096, NULL, 5, NULL);
     #endif
     /* microphone*/
-    init_i2s();
-    xTaskCreate(i2s_read_task, "i2s_example_read_task", 4096, NULL, 5, NULL);
+    i2s_mic_init();
+    xTaskCreate(i2s_mic_task, "i2s_example_read_task", 4096, NULL, 5, NULL);
 
     // gpio_set_direction(2, GPIO_MODE_OUTPUT);
     // xTaskCreate(taskMic, "Mic", 2048, NULL, 0, NULL); //task, debugName, size, args, priority
