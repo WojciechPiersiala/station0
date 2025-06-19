@@ -8,17 +8,23 @@
 #include "esp_err.h"
 #include "sdkconfig.h"
 #include "mic.h"
+#include "esp_log.h"
+#include "freertos/queue.h"
 
-static i2s_chan_handle_t i2s_example_init_pdm_rx(void)
+QueueHandle_t audio_queue;
+static const char* tag = "mic";
+
+
+i2s_chan_handle_t mic_init_pdm_rx(void)
 {
     i2s_chan_handle_t rx_chan;        // I2S rx channel handler
-    /* Setp 1: Determine the I2S channel configuration and allocate RX channel only
-     * but note that PDM channel can only be registered on I2S_NUM_0 */
+    /* Setp 1: Determine the I2S channel configuration and allocate RX channel only */
+    ESP_LOGI(tag, "Adding new channel ...");
     i2s_chan_config_t rx_chan_cfg = I2S_CHANNEL_DEFAULT_CONFIG(I2S_NUM_AUTO, I2S_ROLE_MASTER);
     ESP_ERROR_CHECK(i2s_new_channel(&rx_chan_cfg, NULL, &rx_chan));
 
-    /* Step 2: Setting the configurations of PDM RX mode and initialize the RX channel
-     * They can help to specify the slot and clock configurations for initialization or re-configuring */
+    /* Step 2: Setting the configurations of PDM RX mode and initialize the RX channel */  
+    ESP_LOGI(tag, "Preparing PDM configuration ...");
     i2s_pdm_rx_config_t pdm_rx_cfg = {
         .clk_cfg = I2S_PDM_RX_CLK_DEFAULT_CONFIG(PDM_RX_FREQ_HZ),
         /* The data bit-width of PDM mode is fixed to 16 */
@@ -41,27 +47,40 @@ static i2s_chan_handle_t i2s_example_init_pdm_rx(void)
 
 
 
-void i2s_example_pdm_rx_task(void *args)
+void mic_task(void *args)
 {
-    int16_t *r_buf = (int16_t *)calloc(1, BUFF_SIZE);
-    assert(r_buf);
-    i2s_chan_handle_t rx_chan = i2s_example_init_pdm_rx();
+    // int16_t *r_buf = (int16_t *)calloc(1, BUFF_SIZE);
+    // assert(r_buf);
+    // size_t r_bytes = 0;
 
-    size_t r_bytes = 0;
-    /* ATTENTION: The print and delay in the read task only for monitoring the data by human,
-     * Normally there shouldn't be any delays to ensure a short polling time,
-     * Otherwise the dma buffer will overflow and lead to the data lost */
+    i2s_chan_handle_t rx_chan = mic_init_pdm_rx();
+
+    AudioChunk chunk;
     while (1) {
         /* Read i2s data */
-        if (i2s_channel_read(rx_chan, r_buf, BUFF_SIZE, &r_bytes, 1000) == ESP_OK) {
-            printf("Read Task: i2s read %d bytes\n-----------------------------------\n", r_bytes);
-            printf("[0] %d [1] %d [2] %d [3] %d [4] %d [5] %d [6] %d [7] %d\n\n",
-                   r_buf[0], r_buf[1], r_buf[2], r_buf[3], r_buf[4], r_buf[5], r_buf[6], r_buf[7]);
-        } else {
-            printf("Read Task: i2s read failed\n");
+        if(i2s_channel_read(rx_chan, chunk.samples, sizeof(chunk.samples), &chunk.length, 1000) == ESP_OK){
+            if (xQueueSend(audio_queue, &chunk, 0) == pdPASS) {
+                #if 0 
+                for(int i=0; i< sizeof(chunk.samples)/sizeof(int16_t); i++){
+                    printf("%d, ", chunk.samples[i]);
+                }
+                printf("\n\n");
+                #endif
+            }
+            else{
+                ESP_LOGW(tag, "Audio queue full, dropping frame");
+                vTaskDelay(pdMS_TO_TICKS(MIC_WAIT));
+            }
         }
-        vTaskDelay(pdMS_TO_TICKS(200));
+        // if (i2s_channel_read(rx_chan, r_buf, BUFF_SIZE, &r_bytes, 1000) == ESP_OK) {
+        //     printf("Read Task: i2s read %d bytes\n-----------------------------------\n", r_bytes);
+        //     printf("[0] %d [1] %d [2] %d [3] %d [4] %d [5] %d [6] %d [7] %d\n\n",
+        //            r_buf[0], r_buf[1], r_buf[2], r_buf[3], r_buf[4], r_buf[5], r_buf[6], r_buf[7]);
+        // } else {
+        //     ESP_LOGE(tag, "Read Task: i2s read failed\n");
+        // }
+        // // vTaskDelay(pdMS_TO_TICKS(200));
     }
-    free(r_buf);
+    // free(r_buf);
     vTaskDelete(NULL);
 }

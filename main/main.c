@@ -19,14 +19,14 @@ void app_main(void){
     }
     ESP_ERROR_CHECK(ret);
 
-    ESP_LOGI("", "ESP_WIFI_MODE_STA");
-
     /* wifi, tcp connection*/
-    #if 0
+    #if 1
         wifi_init_sta();
         xTaskCreate(tcp_client_task, "tcp_client", 4096, NULL, 5, NULL);
     #endif
     /* microphone*/
-    xTaskCreate(i2s_example_pdm_rx_task, "i2s_example_pdm_rx_task", 4096, NULL, 5, NULL);
+    #if 1
+        xTaskCreate(mic_task, "mic_task", 4096, NULL, 5, NULL);
+    #endif
 
 }

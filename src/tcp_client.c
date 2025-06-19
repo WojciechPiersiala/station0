@@ -1,11 +1,12 @@
 #include "wifi.h"
 #include "tcp_client.h"
-
 #include "lwip/sockets.h"
 #include "lwip/netdb.h"
 #include "esp_log.h"
+#include "mic.h"
 
-static const uint32_t sendSleepTime = 1000/portTICK_PERIOD_MS;
+
+// static const uint32_t sendSleepTime = 1000/portTICK_PERIOD_MS;
 static const char* tag = "tcp";
 static const int maxConn = 50;
 
@@ -28,6 +29,14 @@ void send_with_header(char *payload, int socket){
 
 
 void tcp_client_task(void *pvParameters){
+    /* init tcp client */
+    /* prepare the audio queue*/
+    ESP_LOGI(tag, "Preparing audio queue ...");
+    audio_queue = xQueueCreate(AUDIO_QUEUE_LENGTH, sizeof(AudioChunk));
+    if (audio_queue == NULL) {
+        ESP_LOGE("main", "Failed to create audio queue!");
+    }
+
     const char *host_ip = DEFAULT_HOST_IP;
     int port = PORT;
 
@@ -58,7 +67,6 @@ void tcp_client_task(void *pvParameters){
             connDone++;
             close(sock);
             vTaskDelay(pdMS_TO_TICKS(1000));
-            // return;
         }
         else{
             ESP_LOGI(tag, "Successfully connected");
@@ -73,19 +81,29 @@ void tcp_client_task(void *pvParameters){
             return;
         }
     }
-    
     ESP_LOGI(tag, "Successfully connected");
 
-    char payload[PAYLOAD_LEN];
-    for(int j=0; j<3; j++){
+    // /* run the tcp client */
+    // char payload[PAYLOAD_LEN];
+    // for(int j=0; j<3; j++){
 
-        sprintf(payload, "Hello from esp32 %d", j);
+    //     sprintf(payload, "Hello from esp32 %d", j);
 
-        send_with_header(payload, sock);
+    //     send_with_header(payload, sock);
 
-        vTaskDelay(sendSleepTime);
+    //     vTaskDelay(sendSleepTime);
+    // }
+    // send_with_header(DISCONNECT_MSG, sock);
+    AudioChunk chunk;
+    while (1) {
+        if (xQueueReceive(audio_queue, &chunk, portMAX_DELAY) == pdPASS) {
+            if (sock > 0) {
+                send(sock, chunk.samples, chunk.length, 0);
+                ESP_LOGI(tag, "Sent %d bytes", chunk.length);
+            }
+        }
+        vTaskDelay(pdMS_TO_TICKS(MIC_WAIT));
     }
-    send_with_header(DISCONNECT_MSG, sock);
 
     close(sock);
     vTaskDelete(NULL);
