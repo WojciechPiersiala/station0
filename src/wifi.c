@@ -11,7 +11,6 @@ static int s_retry_num = 0;
 static EventGroupHandle_t s_wifi_event_group;
 
 static char ip_str[16];
-static char host_ip_str[16];
 static const char* tag = "wifi";
 
 const char* get_ip_str(void){

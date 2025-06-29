@@ -2,7 +2,7 @@
 
 
 // #define DEFAULT_HOST_IP "192.168.1.4"
-#define DEFAULT_HOST_IP "192.168.1.9"
+#define DEFAULT_HOST_IP "192.168.1.7"
 #define PORT 5050
 
 // #define FORMAT "utf-8"
