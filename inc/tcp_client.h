@@ -1,16 +1,14 @@
 #pragma once
 
-
-// #define DEFAULT_HOST_IP "192.168.1.4"
-#define DEFAULT_HOST_IP "192.168.1.7"
+#define DEFAULT_HOST_IP "192.168.1.8"
 #define PORT 5050
 
-// #define FORMAT "utf-8"
+
 #define DISCONNECT_MSG "!DISCONNECT"
 #define HEADER 16
 #define PAYLOAD_LEN 256
-// #define PORT 8080
-// #define TAG "tcp"
+
+extern volatile bool startTcp;
 
 
 void tcp_client_task(void *pvParameters);

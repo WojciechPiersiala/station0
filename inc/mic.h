@@ -20,7 +20,7 @@ typedef struct {
 } AudioChunk;
 
 extern QueueHandle_t audio_queue;
-
+extern volatile bool startRecording;
 
 /* PDM funcitons */
 void mic_task(void *args);

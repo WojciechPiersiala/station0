@@ -12,6 +12,7 @@
 #include "freertos/queue.h"
 
 QueueHandle_t audio_queue;
+volatile bool startRecording = false;
 static const char* tag = "mic";
 
 
@@ -57,29 +58,30 @@ void mic_task(void *args)
 
     AudioChunk chunk;
     while (1) {
-        /* Read i2s data */
-        if(i2s_channel_read(rx_chan, chunk.samples, sizeof(chunk.samples), &chunk.length, 1000) == ESP_OK){
-            if (xQueueSend(audio_queue, &chunk, 0) == pdPASS) {
-                #if 0 
-                for(int i=0; i< sizeof(chunk.samples)/sizeof(int16_t); i++){
-                    printf("%d, ", chunk.samples[i]);
+        if(startRecording){
+            /* Read i2s data */
+            if(i2s_channel_read(rx_chan, chunk.samples, sizeof(chunk.samples), &chunk.length, 1000) == ESP_OK){
+                if (xQueueSend(audio_queue, &chunk, 0) == pdPASS) { // send the audo chunk to the queue
+                    #if 1 // print samples for debug
+                    ESP_LOGI(tag, "Sent audio chunk with %d bytes", chunk.length);
+                    // for(int i=0; i< sizeof(chunk.samples)/sizeof(int16_t); i++){
+                    //     printf("%d, ", chunk.samples[i]);
+                    // }
+                    printf("\n\n");
+                    #endif
                 }
-                printf("\n\n");
-                #endif
+                else{
+                    ESP_LOGW(tag, "Audio queue full, dropping frame");
+                    vTaskDelay(pdMS_TO_TICKS(MIC_WAIT));
+                }
             }
             else{
-                ESP_LOGW(tag, "Audio queue full, dropping frame");
-                vTaskDelay(pdMS_TO_TICKS(MIC_WAIT));
+                ESP_LOGE(tag, "Failed to read data from I2S");
             }
         }
-        // if (i2s_channel_read(rx_chan, r_buf, BUFF_SIZE, &r_bytes, 1000) == ESP_OK) {
-        //     printf("Read Task: i2s read %d bytes\n-----------------------------------\n", r_bytes);
-        //     printf("[0] %d [1] %d [2] %d [3] %d [4] %d [5] %d [6] %d [7] %d\n\n",
-        //            r_buf[0], r_buf[1], r_buf[2], r_buf[3], r_buf[4], r_buf[5], r_buf[6], r_buf[7]);
-        // } else {
-        //     ESP_LOGE(tag, "Read Task: i2s read failed\n");
-        // }
-        // // vTaskDelay(pdMS_TO_TICKS(200));
+        else{
+            vTaskDelay(pdMS_TO_TICKS(10)); // delay the task when not recording
+        }
     }
     // free(r_buf);
     vTaskDelete(NULL);
