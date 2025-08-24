@@ -7,7 +7,7 @@
 #define PDM_RX_CLK_IO   0
 #define PDM_RX_DIN_IO   34
 #define PDM_RX_FREQ_HZ          16000           // I2S PDM RX frequency
-#define MIC_WAIT 1000 //ms
+
 
 /* Autio queue */
 #define AUDIO_QUEUE_ITEM_SIZE BUFF_SIZE  

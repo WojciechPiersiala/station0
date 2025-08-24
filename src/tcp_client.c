@@ -4,22 +4,21 @@
 #include "lwip/netdb.h"
 #include "esp_log.h"
 #include "mic.h"
+#include "main.h"
 
-
-// static const uint32_t sendSleepTime = 1000/portTICK_PERIOD_MS;
 static const char* tag = "tcp";
 static const int maxConn = 50;
 
 static bool retryConnection = true;
 static int connDone = 0;
+static int sock = -1;
 
+// void send_with_header(char *payload, int socket){
 
-void send_with_header(char *payload, int socket){
+//     send(socket, payload, strlen(payload), 0);
+//     ESP_LOGI(tag, "Message sent: \"%s\"", payload);
+// }
 
-    send(socket, payload, strlen(payload), 0);
-    ESP_LOGI(tag, "Message sent: \"%s\"", payload);
-    // ESP_LOGI(tag, "============== HEADER: %d,  strlen(payload): %d ==============", HEADER, strlen(payload));
-}
 
 int closeConnection(int sock){
     ESP_LOGE(tag, "Closing socket and deleting task ...");
@@ -29,21 +28,19 @@ int closeConnection(int sock){
     }
     connDone = 0;
     retryConnection = true;
-    vTaskDelay(pdMS_TO_TICKS(5000));
+    vTaskDelay(pdMS_TO_TICKS(1000));
     startTcp = true;
     ESP_LOGI(tag, "Socket closed");
     vTaskDelete(NULL);
     return 0;
 }
 
-void tcp_client_task(void *pvParameters){
-    
-    // /* init tcp client */
-    // /* prepare the audio queue*/
-    // ESP_LOGI(tag, "Preparing audio queue ...");
-    // audio_queue = xQueueCreate(AUDIO_QUEUE_LENGTH, sizeof(AudioChunk));
+
+void init_tcp(){
+    /* init */
     if (audio_queue == NULL) {
         ESP_LOGE("main", "Failed to connect to audio queue!");
+        vTaskDelete(NULL);
     }
 
     const char *host_ip = DEFAULT_HOST_IP;
@@ -54,7 +51,6 @@ void tcp_client_task(void *pvParameters){
     dest_addr.sin_family = AF_INET;
     dest_addr.sin_port = htons(port);
 
-    int sock = -1;
 
     while(retryConnection){
         sock = socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
@@ -82,26 +78,65 @@ void tcp_client_task(void *pvParameters){
     ESP_LOGI(tag, "Enabling sending audio data to queue");
     startRecording = true;
     startTcp = false;
+}
+
+
+int send_audio_chunk(AudioChunk *chunk){
+    if (xQueueReceive(audio_queue, chunk, portMAX_DELAY) == pdPASS && sock >= 0) {
+        int sent = send(sock, chunk->samples, chunk->length, 0);
+        if(sent >0){
+            if(LOG_AUDIO){
+                ESP_LOGI(tag, "Sent %d bytes to the server", chunk->length);
+            }
+            return sent;
+        }
+        else{
+            ESP_LOGE(tag, "Error occurred during sending audio: errno %d", errno);
+            startRecording = false; // stop recording when connection is lost
+            return -1;
+        }   
+    }
+    else{
+        if(LOG_AUDIO){
+            ESP_LOGE(tag, "Failed to receive audio chunk from queue");
+        }
+        return 0;
+    }
+}
+
+int recv_message(char *recv_buf){
+    int len = recv(sock, recv_buf, sizeof(recv_buf)-1, MSG_DONTWAIT);
+    if (len > 0) {
+        recv_buf[len] = 0; // Null-terminate
+        ESP_LOGI(tag, "Received from server: %s", recv_buf);
+
+        if (strcmp(recv_buf, DISCONNECT_MSG) == 0) {
+            ESP_LOGI(tag, "Received disconnect message from server");
+            closeConnection(sock);
+        }
+    }
+    return 0;
+}
+
+
+void tcp_client_task(void *pvParameters){
+    init_tcp();
 
     AudioChunk chunk;
+    char recv_buf[128];
+
     while (1) {
-        ESP_LOGI(tag, "main loop of tcp client task");
-        if (xQueueReceive(audio_queue, &chunk, portMAX_DELAY) == pdPASS && sock >= 0) {
-            int sent = send(sock, chunk.samples, chunk.length, 0);
-            if(sent >0){
-                ESP_LOGI(tag, "Sent %d bytes", chunk.length);
-            }
-            else{
-                ESP_LOGE(tag, "Error occurred during sending: errno %d", errno);
-                startRecording = false; // stop recording when connection is lost
-                closeConnection(sock);
-                return;
-            }
-            
+        /* send audio chunk*/
+        if(send_audio_chunk(&chunk) < 0){
+            closeConnection(sock);  
         }
         vTaskDelay(pdMS_TO_TICKS(MIC_WAIT));
-    }
 
+        /* receive message from server */
+        recv_message(recv_buf);
+
+
+    }
     close(sock);
     vTaskDelete(NULL);
 }

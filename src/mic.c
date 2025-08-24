@@ -10,10 +10,12 @@
 #include "mic.h"
 #include "esp_log.h"
 #include "freertos/queue.h"
+#include "main.h"
 
 QueueHandle_t audio_queue;
 volatile bool startRecording = false;
 static const char* tag = "mic";
+
 
 
 i2s_chan_handle_t mic_init_pdm_rx(void)
@@ -61,19 +63,19 @@ void mic_task(void *args)
         if(startRecording){
             /* Read i2s data */
             if(i2s_channel_read(rx_chan, chunk.samples, sizeof(chunk.samples), &chunk.length, 1000) == ESP_OK){
-                if (xQueueSend(audio_queue, &chunk, 0) == pdPASS) { // send the audo chunk to the queue
-                    #if 1 // print samples for debug
-                    ESP_LOGI(tag, "Sent audio chunk with %d bytes", chunk.length);
-                    // for(int i=0; i< sizeof(chunk.samples)/sizeof(int16_t); i++){
-                    //     printf("%d, ", chunk.samples[i]);
-                    // }
-                    printf("\n\n");
-                    #endif
+                if (xQueueSend(audio_queue, &chunk, 0) == pdPASS) { // send the audio chunk to the queue
+                    if(LOG_AUDIO){
+                        ESP_LOGI(tag, "Sent audio chunk with %d bytes to the queue", chunk.length);
+                        printf("\n\n");
+                    }
+
                 }
                 else{
-                    ESP_LOGW(tag, "Audio queue full, dropping frame");
-                    vTaskDelay(pdMS_TO_TICKS(MIC_WAIT));
+                    if(LOG_AUDIO){
+                        ESP_LOGW(tag, "Audio queue full, dropping frame");
+                    }
                 }
+                vTaskDelay(pdMS_TO_TICKS(MIC_WAIT));
             }
             else{
                 ESP_LOGE(tag, "Failed to read data from I2S");
