@@ -13,6 +13,9 @@ static bool retryConnection = true;
 static int connDone = 0;
 static int sock = -1;
 
+static char message_buf[128];
+static int message_len = 0;
+
 // void send_with_header(char *payload, int socket){
 
 //     send(socket, payload, strlen(payload), 0);
@@ -104,18 +107,27 @@ int send_audio_chunk(AudioChunk *chunk){
     }
 }
 
-int recv_message(char *recv_buf){
+int recv_message(char *recv_buf, char* message_out){
     int len = recv(sock, recv_buf, sizeof(recv_buf)-1, MSG_DONTWAIT);
     if (len > 0) {
-        recv_buf[len] = 0; // Null-terminate
-        ESP_LOGI(tag, "Received from server: %s", recv_buf);
+        // ESP_LOGI(tag, "Received message: %s", recv_buf);
+        recv_buf[len] = 0;
+        for(int i=0; i<len; i++){
+            message_buf[message_len++] = recv_buf[i];
+            if(recv_buf[i] == '\n'){
+                message_buf[message_len] = 0;
 
-        if (strcmp(recv_buf, DISCONNECT_MSG) == 0) {
-            ESP_LOGI(tag, "Received disconnect message from server");
-            closeConnection(sock);
+                // strcpy(message_out, message_buf);
+                strncpy(message_out, message_buf, message_len - 1);
+                message_out[message_len - 1] = 0;
+
+                message_len = 0;
+                return strlen(message_out); // return the length of the received message
+            }
         }
+
     }
-    return 0;
+    return 0; // no message received
 }
 
 
@@ -124,6 +136,7 @@ void tcp_client_task(void *pvParameters){
 
     AudioChunk chunk;
     char recv_buf[128];
+    char message_out[128];
 
     while (1) {
         /* send audio chunk*/
@@ -133,8 +146,14 @@ void tcp_client_task(void *pvParameters){
         vTaskDelay(pdMS_TO_TICKS(MIC_WAIT));
 
         /* receive message from server */
-        recv_message(recv_buf);
+        if(recv_message(recv_buf, message_out)){
+            ESP_LOGI(tag, "Received message: \"%s\"", message_out);
 
+            if (strcmp(message_out, DISCONNECT_MSG) == 0) {
+                ESP_LOGW(tag, "Received disconnect message from server");
+                closeConnection(sock);
+            }
+        }
 
     }
     close(sock);

@@ -1,7 +1,6 @@
 #pragma once
 
-#define DEFAULT_HOST_IP "192.168.1.8"
-#define PORT 5050
+
 
 
 #define DISCONNECT_MSG "!DISCONNECT"

@@ -4,12 +4,10 @@
 #include "esp_system.h"
 #include "esp_log.h"
 #include "nvs_flash.h"
-
 #include "wifi.h"
 #include "tcp_client.h"
 #include "mic.h"
 #include "main.h"
-
 
 
 volatile bool startTcp = true;
