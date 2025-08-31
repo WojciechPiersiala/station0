@@ -11,6 +11,7 @@
 #include "esp_log.h"
 #include "freertos/queue.h"
 #include "main.h"
+#include "esp_timer.h"
 
 QueueHandle_t audio_queue;
 volatile bool startRecording = false;
@@ -52,30 +53,63 @@ i2s_chan_handle_t mic_init_pdm_rx(void)
 
 void mic_task(void *args)
 {
-    // int16_t *r_buf = (int16_t *)calloc(1, BUFF_SIZE);
-    // assert(r_buf);
-    // size_t r_bytes = 0;
-
+    startRecording = false;
     i2s_chan_handle_t rx_chan = mic_init_pdm_rx();
 
     AudioChunk chunk;
+    
+    xQueueReset(audio_queue); // clear the queue before starting recording
     while (1) {
         if(startRecording){
             /* Read i2s data */
-            if(i2s_channel_read(rx_chan, chunk.samples, sizeof(chunk.samples), &chunk.length, 1000) == ESP_OK){
-                if (xQueueSend(audio_queue, &chunk, 0) == pdPASS) { // send the audio chunk to the queue
-                    if(LOG_AUDIO){
-                        ESP_LOGI(tag, "Sent audio chunk with %d bytes to the queue", chunk.length);
-                        printf("\n\n");
-                    }
+            int64_t t0 = esp_timer_get_time();
 
+            esp_err_t err = i2s_channel_read(rx_chan, chunk.samples, sizeof(chunk.samples), &chunk.length, portMAX_DELAY);
+            #if LOG_AUDIO
+                int64_t t1 = esp_timer_get_time();
+            #endif
+            chunk.timestamp = t0;
+
+
+            if(err == ESP_OK){
+                // warning if the audio data is not full
+                if(chunk.length != sizeof(chunk.samples)){
+                    ESP_LOGW(tag, "Partial chunk received: %d bytes", chunk.length);
                 }
-                else{
-                    if(LOG_AUDIO){
+                
+                // place the audio data in the queue
+                int sendAudioRes = xQueueSend(audio_queue, &chunk, pdMS_TO_TICKS(10));
+                if(sendAudioRes == pdPASS) {
+                    #if LOG_AUDIO
+                        ESP_LOGI(tag, "Sent audio chunk with %d bytes to the queue\n", chunk.length);
+                        int64_t read_chunk_ms = (t1 - t0) / 1000;
+                        ESP_LOGI(tag, "chunk period: %lld ms", read_chunk_ms);
+                    #endif
+                }
+                else { // Audio data couldn't be placed in the queue
+                    #if LOG_AUDIO
                         ESP_LOGW(tag, "Audio queue full, dropping frame");
-                    }
+                    #endif
                 }
-                vTaskDelay(pdMS_TO_TICKS(MIC_WAIT));
+
+                // // place timestamp data in the queue
+                // int sendTimeRes = 0;
+                // if(sendAudioRes)
+                //     sendTimeRes = xQueueSend(timestamp_queue, &t0, pdMS_TO_TICKS(10));
+                // if(sendTimeRes == pdPASS) {
+                //     #if LOG_AUDIO
+                //         ESP_LOGI(tag, "Sent timestamp %lld to the queue\n", t0);
+                     
+                //         int64_t read_chunk_ms = (t1 - t0) / 1000;
+                //         ESP_LOGI(tag, "chunk period: %lld ms", read_chunk_ms);
+                //         ESP_LOGI(tag, "Sent timestamp %lld to the queue\n", t0);
+                //     #endif 
+                // }
+                // else { // Timestamp data couldn't be placed in the queue
+                //     #if LOG_AUDIO
+                //         ESP_LOGW(tag, "Timestamp queue full, dropping frame");
+                //     #endif
+                // }
             }
             else{
                 ESP_LOGE(tag, "Failed to read data from I2S");

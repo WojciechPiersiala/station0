@@ -1,18 +1,7 @@
 #pragma once
 
 #include "esp_wifi.h"
-
-// change wifi ssid & password
-#define WIFI_NETWORK 1
-#if WIFI_NETWORK == 1
-    #define ESP_WIFI_SSID "INEA-54D4_2.4G"
-    #define ESP_WIFI_PASS "KqkmRCph"
-#elif WIFI_NETWORK == 2
-    #define ESP_WIFI_SSID "TCL-5J3J-2.4GHz"
-    #define ESP_WIFI_PASS "G6hgv9Tq396k"
-#else
-    #error "Invalid WIFI_NETWORK selected! Please define WIFI_NETWORK as 1 or 2."
-#endif
+#include "main.h"
 
 #define EXAMPLE_ESP_MAXIMUM_RETRY  CONFIG_ESP_MAXIMUM_RETRY
 

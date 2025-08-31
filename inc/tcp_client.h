@@ -1,14 +1,8 @@
 #pragma once
-
-
-
-
 #define DISCONNECT_MSG "!DISCONNECT"
-#define HEADER 16
-#define PAYLOAD_LEN 256
+
 
 extern volatile bool startTcp;
 
-
 void tcp_client_task(void *pvParameters);
-void send_with_header(char *payload, int socket);
+int send_with_header(int socket, const void *dataptr, size_t data_len, int flags, char headertyp, char* headerRest);

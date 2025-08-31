@@ -5,6 +5,7 @@
 #include "esp_log.h"
 #include "mic.h"
 #include "main.h"
+#include "esp_timer.h"
 
 static const char* tag = "tcp";
 static const int maxConn = 50;
@@ -16,11 +17,38 @@ static int sock = -1;
 static char message_buf[128];
 static int message_len = 0;
 
-// void send_with_header(char *payload, int socket){
 
-//     send(socket, payload, strlen(payload), 0);
-//     ESP_LOGI(tag, "Message sent: \"%s\"", payload);
-// }
+
+// sock, &chunk->timestamp, sizeof(chunk->timestamp
+
+int send_with_header(int socket, const void *dataptr, size_t data_len, int flags, char headertyp, char* headerRest){
+
+    uint8_t header[TCP_HEADER_LEN] = {0};
+    header[0] = headertyp;
+    memcpy(header + 1, headerRest, TCP_HEADER_LEN - 1);
+
+    uint8_t *msg = malloc(TCP_HEADER_LEN + data_len);
+    if (!msg) return -1;
+    memcpy(msg, header, TCP_HEADER_LEN);
+    memcpy(msg + TCP_HEADER_LEN, dataptr, data_len);
+
+    #if LOG_DATA
+        printf("\n");
+        ESP_LOGI(tag, "message");
+        for(int i=0; i<TCP_HEADER_LEN; i++){
+            printf("%02X ", msg[i]);
+        }
+        printf("| ");
+        for(int i=TCP_HEADER_LEN; i<TCP_HEADER_LEN + data_len; i++){
+            printf("%02X ", msg[i]);
+        }
+        printf("\n");
+    #endif
+
+    int sent = send(socket, msg, TCP_HEADER_LEN + data_len, flags);
+    free(msg);
+    return sent;
+}
 
 
 int closeConnection(int sock){
@@ -83,15 +111,17 @@ void init_tcp(){
     startTcp = false;
 }
 
-
 int send_audio_chunk(AudioChunk *chunk){
-    if (xQueueReceive(audio_queue, chunk, portMAX_DELAY) == pdPASS && sock >= 0) {
-        int sent = send(sock, chunk->samples, chunk->length, 0);
-        if(sent >0){
-            if(LOG_AUDIO){
-                ESP_LOGI(tag, "Sent %d bytes to the server", chunk->length);
-            }
-            return sent;
+    if(xQueueReceive(audio_queue, chunk, portMAX_DELAY) == pdPASS) {
+        // int sentAudioRes = send(sock, chunk->samples, chunk->length, 0);
+        int sentAudioRes = send_with_header(sock, chunk->samples, chunk->length, 0, 'A', (char*)&(chunk->timestamp) );
+        // int sentAudioRes = send(sock, chunk->samples, chunk->length, 0);
+        // int sentTs = send_with_header(sock, &chunk->timestamp, sizeof(chunk->timestamp), 0);
+        if(sentAudioRes >0){ // success
+            #if LOG_AUDIO
+                ESP_LOGI(tag, "timestamp: %lld, Sent %d bytes to the server", chunk->timestamp, chunk->length);
+            #endif
+            return sentAudioRes;
         }
         else{
             ESP_LOGE(tag, "Error occurred during sending audio: errno %d", errno);
@@ -100,11 +130,27 @@ int send_audio_chunk(AudioChunk *chunk){
         }   
     }
     else{
-        if(LOG_AUDIO){
+        #if LOG_AUDIO
             ESP_LOGE(tag, "Failed to receive audio chunk from queue");
-        }
+        #endif
         return 0;
     }
+
+    // /* timestamps */
+    // int64_t t0;
+    // if(sentAudioRes){
+    //     if(xQueueReceive(timestamp_queue, &t0, portMAX_DELAY) == pdPASS) {
+    //         int sent = send(sock, &t0, sizeof(t0), 0);
+    //         #if LOG_AUDIO
+    //             ESP_LOGI(tag, "Sent timestamp %lld to the server\n", t0);
+    //         #endif
+    //     }
+    // }
+    // else{
+    //     #if LOG_AUDIO 
+    //         ESP_LOGE(tag, "Failed to receive timestamp from queue");
+    //     #endif
+    // }
 }
 
 int recv_message(char *recv_buf, char* message_out){
@@ -140,10 +186,15 @@ void tcp_client_task(void *pvParameters){
 
     while (1) {
         /* send audio chunk*/
-        if(send_audio_chunk(&chunk) < 0){
-            closeConnection(sock);  
+        int res = send_audio_chunk(&chunk);
+        if(res < 0){ // failure
+            closeConnection(sock);  // close connection
         }
-        vTaskDelay(pdMS_TO_TICKS(MIC_WAIT));
+        else if (res > 0){ // success
+            // int64_t us_since_start = esp_timer_get_time(); // microseconds since boot
+            // ESP_LOGI("main", "Microseconds since start: %lld", us_since_start);
+        }
+        
 
         /* receive message from server */
         if(recv_message(recv_buf, message_out)){
@@ -155,6 +206,7 @@ void tcp_client_task(void *pvParameters){
             }
         }
 
+        vTaskDelay(pdMS_TO_TICKS(MIC_WAIT));
     }
     close(sock);
     vTaskDelete(NULL);

@@ -33,9 +33,10 @@ void app_main(void){
     // xTaskCreate(tcp_client_task, "tcp_client", 4096, NULL, 5, NULL);
 
     /* microphone*/
-    xTaskCreate(mic_task, "mic_task", 4096, NULL, 5, NULL);
+    xTaskCreate(mic_task, "mic_task", 8192 , NULL, 5, NULL);
 
-    while(1){
+    /* restart the tcp client if not active*/
+    while(1){ //
         // ESP_LOGI("main", "startTcp: %d", startTcp);
         if(startTcp){
             ESP_LOGI("main", "Restarting TCP client task ...");
@@ -43,6 +44,6 @@ void app_main(void){
             xTaskCreate(tcp_client_task, "tcp_client", TCP_STACK_SIZE, NULL, 5, NULL);
             startTcp = false;
         }
-        vTaskDelay(pdMS_TO_TICKS(100));
+        vTaskDelay(pdMS_TO_TICKS(5000));
     }
 }
