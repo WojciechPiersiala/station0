@@ -177,7 +177,8 @@ int recv_message(char *recv_buf, char* message_out){
 }
 
 
-void tcp_client_task(void *pvParameters){
+
+void run_tcp_client_task(void *pvParameters){
     init_tcp();
 
     AudioChunk chunk;
@@ -210,4 +211,19 @@ void tcp_client_task(void *pvParameters){
     }
     close(sock);
     vTaskDelete(NULL);
+}
+
+
+
+void try2connect_tcp_task(){
+        while(1){ //
+        // ESP_LOGI("main", "startTcp: %d", startTcp);
+        if(startTcp){
+            ESP_LOGI("main", "Restarting TCP client task ...");
+            vTaskDelay(pdMS_TO_TICKS(5000));
+            xTaskCreate(run_tcp_client_task, "tcp_client", TCP_STACK_SIZE, NULL, 5, NULL);
+            startTcp = false;
+        }
+        vTaskDelay(pdMS_TO_TICKS(5000));
+    }
 }

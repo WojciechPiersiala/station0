@@ -6,7 +6,11 @@
 #include "esp_wifi.h"
 #include "wifi.h"
 
+#include "lwip/ip4_addr.h"
+#include "esp_netif.h"
 
+#include "main.h"
+const int ipaddr[4] = {192,168,1,MODULE_ID}; //station IP address
 static int s_retry_num = 0;
 static EventGroupHandle_t s_wifi_event_group;
 
@@ -46,7 +50,7 @@ void wifi_init_sta(void){
     ESP_ERROR_CHECK(esp_netif_init());
 
     ESP_ERROR_CHECK(esp_event_loop_create_default());
-    esp_netif_create_default_wifi_sta();
+    esp_netif_t *netif = esp_netif_create_default_wifi_sta();
 
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
@@ -78,6 +82,17 @@ void wifi_init_sta(void){
             .sae_h2e_identifier = EXAMPLE_H2E_IDENTIFIER,
         },
     };
+
+    
+    // Set static IP
+    esp_netif_ip_info_t ip_info;
+    // IP4_ADDR(&ip_info.ip,      192,168,1,50);   
+    IP4_ADDR(&ip_info.ip, ipaddr[0], ipaddr[1], ipaddr[2], ipaddr[3]);
+    IP4_ADDR(&ip_info.gw,      192,168,1,1);    
+    IP4_ADDR(&ip_info.netmask, 255,255,255,0);  
+    esp_netif_dhcpc_stop (netif); // Stop DHCP client
+    esp_netif_set_ip_info(netif, &ip_info); // Set static IP
+
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA) );
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config) );
     ESP_ERROR_CHECK(esp_wifi_start() );

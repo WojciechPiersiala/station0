@@ -13,6 +13,10 @@
     #error "Invalid WIFI_NETWORK selected! Please define WIFI_NETWORK as 1 or 2."
 #endif
 
+
+/* module id */
+#define MODULE_ID 12 //last octet of the IP address
+
 /* tcp config */
 #define DEFAULT_HOST_IP "192.168.1.10"           //tcp config  server IP
 #define PORT 5050                               //tcp cofnig server port
@@ -22,7 +26,7 @@
 
 /* mic config*/
 #define MIC_WAIT 64                             //  mic config  read wait time in ms
-#define LOG_AUDIO 1                             // mic config log every audio transfer;
+#define LOG_AUDIO 0                             // mic config log every audio transfer;
 #define PDM_RX_FREQ_HZ 16000                   // mic config I2S PDM RX frequency
 #define AUDIO_QUEUE_LENGTH 8                    // mic config holds 10 chunks max
 #define BUFF_SIZE   (2048)                      //mic config audio buffer size

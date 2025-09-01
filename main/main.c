@@ -8,6 +8,10 @@
 #include "tcp_client.h"
 #include "mic.h"
 #include "main.h"
+#include "display.h"
+#include "esp_pm.h"
+#include <driver/gpio.h>
+#include "battery.h"
 
 
 volatile bool startTcp = true;
@@ -28,22 +32,11 @@ void app_main(void){
         return;
     }
 
-    /* wifi, tcp connection*/
     wifi_init_sta();
-    // xTaskCreate(tcp_client_task, "tcp_client", 4096, NULL, 5, NULL);
-
-    /* microphone*/
+    
+    /* start tasks */
+    xTaskCreate(run_battery_task, "run_battery_task", 2048  , NULL, 5, NULL);
     xTaskCreate(mic_task, "mic_task", 8192 , NULL, 5, NULL);
-
-    /* restart the tcp client if not active*/
-    while(1){ //
-        // ESP_LOGI("main", "startTcp: %d", startTcp);
-        if(startTcp){
-            ESP_LOGI("main", "Restarting TCP client task ...");
-            vTaskDelay(pdMS_TO_TICKS(5000));
-            xTaskCreate(tcp_client_task, "tcp_client", TCP_STACK_SIZE, NULL, 5, NULL);
-            startTcp = false;
-        }
-        vTaskDelay(pdMS_TO_TICKS(5000));
-    }
+    xTaskCreate(try2connect_tcp_task, "try2connect_tcp_task", 1024 , NULL, 5, NULL);
+    xTaskCreate(run_display_task, "run_display_task", 4096 , NULL, 5, NULL);
 }

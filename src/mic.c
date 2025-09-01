@@ -49,8 +49,6 @@ i2s_chan_handle_t mic_init_pdm_rx(void)
 }
 
 
-
-
 void mic_task(void *args)
 {
     startRecording = false;
