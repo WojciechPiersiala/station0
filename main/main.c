@@ -36,7 +36,7 @@ void app_main(void){
     
     /* start tasks */
     xTaskCreate(run_battery_task, "run_battery_task", 2048  , NULL, 5, NULL);
-    xTaskCreate(mic_task, "mic_task", 8192 , NULL, 5, NULL);
+    xTaskCreate(mic_task, "mic_task", TCP_STACK_SIZE , NULL, 5, NULL);
     xTaskCreate(try2connect_tcp_task, "try2connect_tcp_task", 1024 , NULL, 5, NULL);
     xTaskCreate(run_display_task, "run_display_task", 4096 , NULL, 5, NULL);
 }

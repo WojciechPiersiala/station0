@@ -119,7 +119,7 @@ int send_audio_chunk(AudioChunk *chunk){
         // int sentTs = send_with_header(sock, &chunk->timestamp, sizeof(chunk->timestamp), 0);
         if(sentAudioRes >0){ // success
             #if LOG_AUDIO
-                ESP_LOGI(tag, "timestamp: %lld, Sent %d bytes to the server", chunk->timestamp, chunk->length);
+                ESP_LOGI(tag, "timestamp: %lld, sample time length: %lld, Sent %d bytes to the server", chunk->timestamp, chunk->read_time, chunk->length);
             #endif
             return sentAudioRes;
         }

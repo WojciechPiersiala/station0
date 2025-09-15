@@ -57,17 +57,20 @@ void mic_task(void *args)
     AudioChunk chunk;
     
     xQueueReset(audio_queue); // clear the queue before starting recording
+    int micFailedCount = 0;
     while (1) {
         if(startRecording){
             /* Read i2s data */
             int64_t t0 = esp_timer_get_time();
 
             esp_err_t err = i2s_channel_read(rx_chan, chunk.samples, sizeof(chunk.samples), &chunk.length, portMAX_DELAY);
+            chunk.timestamp = t0;
             #if LOG_AUDIO
                 int64_t t1 = esp_timer_get_time();
+                chunk.read_time = t1 - t0;  //tmp
             #endif
-            chunk.timestamp = t0;
-
+            
+            
 
             if(err == ESP_OK){
                 // warning if the audio data is not full
@@ -110,7 +113,12 @@ void mic_task(void *args)
                 // }
             }
             else{
-                ESP_LOGE(tag, "Failed to read data from I2S");
+                ESP_LOGW(tag, "Failed to read data from I2S, Failure: %d", micFailedCount);
+                micFailedCount++;
+                if(micFailedCount > 10) {    
+                    ESP_LOGE(tag, "Too many I2S read failures, Restarting the module ...");
+                    esp_restart(); // restart the ESP32
+                }
             }
         }
         else{
