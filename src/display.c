@@ -9,6 +9,7 @@
 #include "esp_lcd_panel_io.h"
 #include "display_text.h"
 #include <main.h>
+#include "display.h"
 // #include "esp_heap_caps.h"
 
 
@@ -128,9 +129,19 @@ void run_display_task(void *arg){
     char *text = malloc(50);
     sprintf(text, "%d.%d.%d.[%d]\n", 192, 168, 1, MODULE_ID);
 
+
+
+
+
+
+
     while(1){
-        draw_text_5x7(panel_handle, 5, 20, "IP address:", rgb565(255,0,255), rgb565(255,255,255), 2);
-        draw_text_5x7(panel_handle, 5, 40, text, rgb565(255,0,255), rgb565(255,255,255), 2);
+        // draw_text_5x7(panel_handle, 5, 20, "IP address:", rgb565(255,0,255), rgb565(255,255,255), 2);
+        // draw_text_5x7(panel_handle, 5, 40, text, rgb565(255,0,255), rgb565(255,255,255), 2);
+
+        draw_text_5x7(panel_handle, 5, 20, "IP address:", rgb565(COLOR_OCT_1, COLOR_OCT_2, COLOR_OCT_3), rgb565(255,255,255), 2);
+        draw_text_5x7(panel_handle, 5, 40, text, rgb565(COLOR_OCT_1, COLOR_OCT_2, COLOR_OCT_3), rgb565(255,255,255), 2);
+
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
     

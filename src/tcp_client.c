@@ -18,37 +18,43 @@ static char message_buf[128];
 static int message_len = 0;
 
 
+typedef struct __attribute__((packed)){
+    uint8_t type;     // 'A'
+    int64_t ts_us;    // little-endian on ESP32
+} audio_hdr_t;
+
+
 
 // sock, &chunk->timestamp, sizeof(chunk->timestamp
 
-int send_with_header(int socket, const void *dataptr, size_t data_len, int flags, char headertyp, char* headerRest){
+// int send_with_header(int socket, const void *dataptr, size_t data_len, int flags, char headertyp, char* headerRest){
 
-    uint8_t header[TCP_HEADER_LEN] = {0};
-    header[0] = headertyp;
-    memcpy(header + 1, headerRest, TCP_HEADER_LEN - 1);
+//     uint8_t header[TCP_HEADER_LEN] = {0};
+//     header[0] = headertyp;
+//     memcpy(header + 1, headerRest, TCP_HEADER_LEN - 1);
 
-    uint8_t *msg = malloc(TCP_HEADER_LEN + data_len);
-    if (!msg) return -1;
-    memcpy(msg, header, TCP_HEADER_LEN);
-    memcpy(msg + TCP_HEADER_LEN, dataptr, data_len);
+//     uint8_t *msg = malloc(TCP_HEADER_LEN + data_len);
+//     if (!msg) return -1;
+//     memcpy(msg, header, TCP_HEADER_LEN);
+//     memcpy(msg + TCP_HEADER_LEN, dataptr, data_len);
 
-    #if LOG_DATA
-        printf("\n");
-        ESP_LOGI(tag, "message");
-        for(int i=0; i<TCP_HEADER_LEN; i++){
-            printf("%02X ", msg[i]);
-        }
-        printf("| ");
-        for(int i=TCP_HEADER_LEN; i<TCP_HEADER_LEN + data_len; i++){
-            printf("%02X ", msg[i]);
-        }
-        printf("\n");
-    #endif
+//     #if LOG_DATA
+//         printf("\n");
+//         ESP_LOGI(tag, "message");
+//         for(int i=0; i<TCP_HEADER_LEN; i++){
+//             printf("%02X ", msg[i]);
+//         }
+//         printf("| ");
+//         for(int i=TCP_HEADER_LEN; i<TCP_HEADER_LEN + data_len; i++){
+//             printf("%02X ", msg[i]);
+//         }
+//         printf("\n");
+//     #endif
 
-    int sent = send(socket, msg, TCP_HEADER_LEN + data_len, flags);
-    free(msg);
-    return sent;
-}
+//     int sent = send(socket, msg, TCP_HEADER_LEN + data_len, flags);
+//     free(msg);
+//     return sent;
+// }
 
 
 int closeConnection(int sock){
@@ -110,30 +116,40 @@ void init_tcp(){
     startRecording = true;
     startTcp = false;
 }
+static int send_all(int s, const void *buf, size_t len) {
+    const uint8_t *p = buf;
+    size_t sent = 0;
+    while (sent < len) {
+        int n = send(s, p + sent, len - sent, 0);
+        if (n <= 0) return -1;
+        sent += n;
+    }
+    return sent;
+}
+
 
 int send_audio_chunk(AudioChunk *chunk){
-    if(xQueueReceive(audio_queue, chunk, portMAX_DELAY) == pdPASS) {
-        // int sentAudioRes = send(sock, chunk->samples, chunk->length, 0);
-        int sentAudioRes = send_with_header(sock, chunk->samples, chunk->length, 0, 'A', (char*)&(chunk->timestamp) );
-        // int sentAudioRes = send(sock, chunk->samples, chunk->length, 0);
-        // int sentTs = send_with_header(sock, &chunk->timestamp, sizeof(chunk->timestamp), 0);
-        if(sentAudioRes >0){ // success
-            #if LOG_AUDIO
-                ESP_LOGI(tag, "timestamp: %lld, sample time length: %lld, Sent %d bytes to the server", chunk->timestamp, chunk->read_time, chunk->length);
-            #endif
-            return sentAudioRes;
-        }
-        else{
-            ESP_LOGE(tag, "Error occurred during sending audio: errno %d", errno);
-            startRecording = false; // stop recording when connection is lost
-            return -1;
-        }   
-    }
-    else{
+    if(xQueueReceive(audio_queue, chunk, portMAX_DELAY) != pdPASS){
         #if LOG_AUDIO
             ESP_LOGE(tag, "Failed to receive audio chunk from queue");
         #endif
         return 0;
+    }
+    audio_hdr_t h = { 'A', chunk->timestamp };
+
+    if (send_all(sock, &h, sizeof(h)) < 0 ||
+        send_all(sock, chunk->samples, chunk->length) < 0) {
+        ESP_LOGE(tag, "Send failed: errno %d", errno);
+        startRecording = false;
+        closeConnection(sock);
+        return -1;
+    }
+
+    #if LOG_AUDIO
+        ESP_LOGI(tag, "ts=%lld sent %d bytes", chunk->timestamp, chunk->length);
+    #endif
+    return chunk->length;
+
     }
 
     // /* timestamps */
@@ -151,7 +167,7 @@ int send_audio_chunk(AudioChunk *chunk){
     //         ESP_LOGE(tag, "Failed to receive timestamp from queue");
     //     #endif
     // }
-}
+
 
 int recv_message(char *recv_buf, char* message_out){
     int len = recv(sock, recv_buf, sizeof(recv_buf)-1, MSG_DONTWAIT);
@@ -221,7 +237,8 @@ void try2connect_tcp_task(){
         if(startTcp){
             ESP_LOGI("main", "Restarting TCP client task ...");
             vTaskDelay(pdMS_TO_TICKS(5000));
-            xTaskCreate(run_tcp_client_task, "tcp_client", TCP_STACK_SIZE, NULL, 5, NULL);
+            // xTaskCreate(run_tcp_client_task, "tcp_client", TCP_STACK_SIZE, NULL, 5, NULL);
+            xTaskCreatePinnedToCore(run_tcp_client_task, "tcp_client", TCP_STACK_SIZE, NULL, PRI_HIGH, NULL, CORE_APP);
             startTcp = false;
         }
         vTaskDelay(pdMS_TO_TICKS(5000));

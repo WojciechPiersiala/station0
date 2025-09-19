@@ -35,8 +35,14 @@ void app_main(void){
     wifi_init_sta();
     
     /* start tasks */
-    xTaskCreate(run_battery_task, "run_battery_task", 2048  , NULL, 5, NULL);
-    xTaskCreate(mic_task, "mic_task", TCP_STACK_SIZE , NULL, 5, NULL);
-    xTaskCreate(try2connect_tcp_task, "try2connect_tcp_task", 1024 , NULL, 5, NULL);
-    xTaskCreate(run_display_task, "run_display_task", 4096 , NULL, 5, NULL);
+    // xTaskCreate(run_battery_task, "run_battery_task", 2048  , NULL, 5, NULL);
+    // xTaskCreate(mic_task, "mic_task", TCP_STACK_SIZE , NULL, 5, NULL);
+    // xTaskCreate(try2connect_tcp_task, "try2connect_tcp_task", 1024 , NULL, 5, NULL);
+    // xTaskCreate(run_display_task, "run_display_task", 4096 , NULL, 5, NULL);
+
+    xTaskCreatePinnedToCore(run_battery_task, "run_battery_task", 2048, NULL, PRI_LOW, NULL, CORE_APP);
+    xTaskCreatePinnedToCore(mic_task, "mic_task", 8192, NULL, PRI_RT, NULL, CORE_MIC);
+    xTaskCreatePinnedToCore(try2connect_tcp_task, "try2connect_tcp_task", TCP_STACK_SIZE, NULL, PRI_HIGH, NULL, CORE_APP);
+    xTaskCreatePinnedToCore(run_display_task, "run_display_task", 4096, NULL, PRI_NORMAL, NULL, CORE_APP);
+    
 }

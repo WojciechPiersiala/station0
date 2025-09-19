@@ -61,12 +61,20 @@ void mic_task(void *args)
     while (1) {
         if(startRecording){
             /* Read i2s data */
-            int64_t t0 = esp_timer_get_time();
-
+            // int64_t t0 = esp_timer_get_time();
             esp_err_t err = i2s_channel_read(rx_chan, chunk.samples, sizeof(chunk.samples), &chunk.length, portMAX_DELAY);
-            chunk.timestamp = t0;
+            int64_t t1 = esp_timer_get_time();
+
+            size_t  samples = chunk.length / sizeof(chunk.samples[0]);
+            double  dur_us  = (double)samples * (1e6 / (double)PDM_RX_FREQ_HZ);
+            int64_t t_duration_us = chunk.length / PDM_RX_FREQ_HZ * 1e6;
+            chunk.timestamp = (int64_t)((double)t1 - dur_us);
+
+            // chunk.timestamp = t1 - t_duration_us;
             #if LOG_AUDIO
-                int64_t t1 = esp_timer_get_time();
+                ESP_LOGI("mic", "read %u samples in %lld us -> %.2f kHz", (unsigned)samples, (long long)(dur_us), 1e3 * samples / (double)(dur_us));
+                ESP_LOGI(tag, "Audio chunk timestamp: %lld", chunk.timestamp);
+                // int64_t t1 = esp_timer_get_time();
                 chunk.read_time = t1 - t0;  //tmp
             #endif
             
@@ -76,23 +84,14 @@ void mic_task(void *args)
                 // warning if the audio data is not full
                 if(chunk.length != sizeof(chunk.samples)){
                     ESP_LOGW(tag, "Partial chunk received: %d bytes", chunk.length);
+                    continue; // skip this chunk
                 }
                 
                 // place the audio data in the queue
-                int sendAudioRes = xQueueSend(audio_queue, &chunk, pdMS_TO_TICKS(10));
-                if(sendAudioRes == pdPASS) {
-                    #if LOG_AUDIO
-                        ESP_LOGI(tag, "Sent audio chunk with %d bytes to the queue\n", chunk.length);
-                        int64_t read_chunk_ms = (t1 - t0) / 1000;
-                        ESP_LOGI(tag, "chunk period: %lld ms", read_chunk_ms);
-                    #endif
+                if (xQueueSend(audio_queue, &chunk, pdMS_TO_TICKS(100)) != pdPASS) {
+                    // queue full: drop, but do not break contract
+                    ESP_LOGW(tag, "Audio queue full, dropping full frame");
                 }
-                else { // Audio data couldn't be placed in the queue
-                    #if LOG_AUDIO
-                        ESP_LOGW(tag, "Audio queue full, dropping frame");
-                    #endif
-                }
-
                 // // place timestamp data in the queue
                 // int sendTimeRes = 0;
                 // if(sendAudioRes)
