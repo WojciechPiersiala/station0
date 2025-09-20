@@ -28,12 +28,12 @@
 
 
 /* module id */
-#define MODULE_ID 13 //last octet of the IP address
+#define MODULE_ID 11 //last octet of the IP address
 
 /* tcp config */
 #define DEFAULT_HOST_IP "192.168.1.111"           //tcp config  server IP
 #define PORT 5050                               //tcp cofnig server port
-#define TCP_STACK_SIZE 8192 /*8192*/            // tcp config stack size for tcp client task and mic task    16384
+#define TCP_STACK_SIZE 12288 /*8192*/            // tcp config stack size for tcp client task and mic task    16384
 #define TCP_HEADER_LEN 8                        //tcp header added to message
 #define LOG_DATA 0                              // log all data samples
 
@@ -42,8 +42,8 @@
 #define LOG_AUDIO 0                             // mic config log every audio transfer;
 
 #define PDM_RX_FREQ_HZ (16000)                   // mic config I2S PDM RX frequency
-#define AUDIO_QUEUE_LENGTH 4                    // mic config holds 10 chunks max
-#define BUFF_SIZE   (4096)                      //mic config audio buffer size old: 6144
+#define AUDIO_QUEUE_LENGTH 2                    // mic config holds 10 chunks max
+#define BUFF_SIZE   (6144)                      //mic config audio buffer size old: 4096 6144 8192
     
 
 /* display config */
