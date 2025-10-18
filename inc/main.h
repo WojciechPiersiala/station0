@@ -41,9 +41,9 @@
 #define MIC_WAIT 64                             //  mic config  read wait time in ms
 #define LOG_AUDIO 0                             // mic config log every audio transfer;
 
-#define PDM_RX_FREQ_HZ (16000)                   // mic config I2S PDM RX frequency
-#define AUDIO_QUEUE_LENGTH 2                    // mic config holds 10 chunks max
-#define BUFF_SIZE   (6144)                      //mic config audio buffer size old: 4096 6144 8192
+#define PDM_RX_FREQ_HZ (32000)                   // mic config I2S PDM RX frequency
+#define AUDIO_QUEUE_LENGTH 1                    // mic config holds 10 chunks max
+#define BUFF_SIZE   (4096)                      //mic config audio buffer size old: 4096 6144 8192
     
 
 /* display config */
