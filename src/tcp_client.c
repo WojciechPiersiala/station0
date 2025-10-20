@@ -13,48 +13,134 @@ static const int maxConn = 50;
 static bool retryConnection = true;
 static int connDone = 0;
 static int sock = -1;
+static bool doManSync = false;
+static int doSyncCounter = 0;
 
-static char message_buf[128];
-static int message_len = 0;
-
+// static char message_buf[128];
+// static int message_len = 0;
+static int64_t offsetUs = 0;
 
 typedef struct __attribute__((packed)){
     uint8_t type;     // 'A'
     int64_t ts_us;    // little-endian on ESP32
-} audio_hdr_t;
+} audio_hdr_t; //send audio header
+
+typedef struct __attribute__((packed)) {
+    uint8_t type;   // 'M'
+    int64_t ts_us;
+} sync_hdr_t; // receive manual sync header
+
+typedef struct __attribute__((packed)){
+    uint8_t type;   // 'Q'
+    int64_t t1_us;  // client send time
+} sync_query_t; // send sync query
+
+typedef struct __attribute__((packed)){
+    uint8_t type;   // 'R' (reply)
+    int64_t t1_us;
+    int64_t t2_us;
+    int64_t t3_us;
+} sync_reply_t; // receive sync reply
 
 
+/* synchronisation */
+void send_sync_query() {
+    sync_query_t q = { 'Q', esp_timer_get_time() };
+    send(sock, &q, sizeof(q), 0);
+    // ESP_LOGI(tag, "SYNC query sent: t1=%lld us", (long long)q.t1_us);
+}
 
-// sock, &chunk->timestamp, sizeof(chunk->timestamp
+static int recv_all_exact(int s, void *buf, size_t len, int flags) {
+    uint8_t *p = (uint8_t*)buf;
+    size_t got = 0;
+    while (got < len) {
+        int n = recv(s, p + got, len - got, flags);
+        if (n == 0)  return 0;                  // peer closed
+        if (n < 0) {
+            if (errno == EAGAIN || errno == EWOULDBLOCK) return -2; // would block
+            return -1;                         // real error
+        }
+        got += n;
+    }
+    return (int)got;
+}
 
-// int send_with_header(int socket, const void *dataptr, size_t data_len, int flags, char headertyp, char* headerRest){
 
-//     uint8_t header[TCP_HEADER_LEN] = {0};
-//     header[0] = headertyp;
-//     memcpy(header + 1, headerRest, TCP_HEADER_LEN - 1);
+static void handle_incoming_messages(void) {
+    uint8_t type;
+    int n = recv(sock, &type, 1, MSG_DONTWAIT);
+    if (n <= 0) return;  // nothing to read right now
+    ESP_LOGI(tag, "Received TCP msg type '%c' (0x%02x)", type, type);
 
-//     uint8_t *msg = malloc(TCP_HEADER_LEN + data_len);
-//     if (!msg) return -1;
-//     memcpy(msg, header, TCP_HEADER_LEN);
-//     memcpy(msg + TCP_HEADER_LEN, dataptr, data_len);
+    double alpha = 0.9; // smoothing factor for offset update
+    double beta  = 1.0 - alpha;
+    switch (type) {
+        case 'R': {  // sync reply
+            sync_reply_t r;
+            r.type = 'R';
+            int rc = recv_all_exact(sock, ((uint8_t*)&r) + 1, sizeof(r) - 1, 0);
+            if (rc == sizeof(r) - 1) {
+                int64_t t4  = esp_timer_get_time();
+                int64_t rtt = (t4 - r.t1_us) - (r.t3_us - r.t2_us);
 
-//     #if LOG_DATA
-//         printf("\n");
-//         ESP_LOGI(tag, "message");
-//         for(int i=0; i<TCP_HEADER_LEN; i++){
-//             printf("%02X ", msg[i]);
-//         }
-//         printf("| ");
-//         for(int i=TCP_HEADER_LEN; i<TCP_HEADER_LEN + data_len; i++){
-//             printf("%02X ", msg[i]);
-//         }
-//         printf("\n");
-//     #endif
+                bool syncCondition = (rtt >= 0 && rtt < 500000); // ignore outliers > 500 ms
 
-//     int sent = send(socket, msg, TCP_HEADER_LEN + data_len, flags);
-//     free(msg);
-//     return sent;
+                if(doManSync || doSyncCounter < 10){ //change synch condition for first 10 syncs
+                    syncCondition = rtt >= 0; // accept all during manual sync or first 10 syncs
+                    alpha = 0.0;
+                    beta  = 1.0;
+                    doManSync = false;
+                }
+
+                if (syncCondition) { // discard outliers > 500 ms
+                    int64_t newOffset = ((r.t2_us - r.t1_us) + (r.t3_us - t4)) / 2;
+                    offsetUs = (int64_t)(alpha * (double)offsetUs + beta * (double)newOffset);
+                    synchOffsetUs = offsetUs;
+                    ESP_LOGI(tag, "SYNC 'R': rtt=%lld us, offset=%lld us",
+                             (long long)rtt, (long long)offsetUs);
+                    doSyncCounter++;
+                }
+            }
+            break;
+        }
+
+        case 'M': {  // manual timestamp message from server
+            sync_hdr_t m;
+            m.type = 'M';
+            int rc = recv_all_exact(sock, ((uint8_t*)&m) + 1, sizeof(m) - 1, 0);
+            if (rc == sizeof(m) - 1) {
+                int64_t now = esp_timer_get_time();
+                int64_t diff = m.ts_us - now;
+                synchOffsetUs = diff;
+                ESP_LOGI(tag, "MANUAL SYNC 'M': server=%lld, local=%lld, diff=%lld us",
+                         (long long)m.ts_us, (long long)now, (long long)diff);
+                doManSync = true;
+                doSyncCounter = 0;
+            }
+            break;
+        }
+
+        default:
+            // drain unknown byte
+            ESP_LOGW(tag, "Unknown TCP msg type '%c' (0x%02x)", type, type);
+            break;
+    }
+}
+
+
+// static int recv_sync_header(int s, int64_t *ts_out)
+// {
+//     sync_hdr_t h;
+//     int n = recv(s, &h, sizeof(h), MSG_DONTWAIT);
+//     if (n == sizeof(h) && h.type == 'S') {
+//         *ts_out = h.ts_us;
+//         return 1; // success
+//     }
+//     return 0; // no data yet or not full header
 // }
+
+
+
 
 
 int closeConnection(int sock){
@@ -152,54 +238,16 @@ int send_audio_chunk(AudioChunk *chunk){
 
     }
 
-    // /* timestamps */
-    // int64_t t0;
-    // if(sentAudioRes){
-    //     if(xQueueReceive(timestamp_queue, &t0, portMAX_DELAY) == pdPASS) {
-    //         int sent = send(sock, &t0, sizeof(t0), 0);
-    //         #if LOG_AUDIO
-    //             ESP_LOGI(tag, "Sent timestamp %lld to the server\n", t0);
-    //         #endif
-    //     }
-    // }
-    // else{
-    //     #if LOG_AUDIO 
-    //         ESP_LOGE(tag, "Failed to receive timestamp from queue");
-    //     #endif
-    // }
-
-
-int recv_message(char *recv_buf, char* message_out){
-    int len = recv(sock, recv_buf, sizeof(recv_buf)-1, MSG_DONTWAIT);
-    if (len > 0) {
-        // ESP_LOGI(tag, "Received message: %s", recv_buf);
-        recv_buf[len] = 0;
-        for(int i=0; i<len; i++){
-            message_buf[message_len++] = recv_buf[i];
-            if(recv_buf[i] == '\n'){
-                message_buf[message_len] = 0;
-
-                // strcpy(message_out, message_buf);
-                strncpy(message_out, message_buf, message_len - 1);
-                message_out[message_len - 1] = 0;
-
-                message_len = 0;
-                return strlen(message_out); // return the length of the received message
-            }
-        }
-
-    }
-    return 0; // no message received
-}
 
 
 
+/* TCP client task */
 void run_tcp_client_task(void *pvParameters){
     init_tcp();
 
     AudioChunk chunk;
-    char recv_buf[128];
-    char message_out[128];
+    // char recv_buf[128];
+    // char message_out[128];
 
     while (1) {
         /* send audio chunk*/
@@ -207,21 +255,29 @@ void run_tcp_client_task(void *pvParameters){
         if(res < 0){ // failure
             closeConnection(sock);  // close connection
         }
-        else if (res > 0){ // success
-            // int64_t us_since_start = esp_timer_get_time(); // microseconds since boot
-            // ESP_LOGI("main", "Microseconds since start: %lld", us_since_start);
-        }
+
         
 
-        /* receive message from server */
-        if(recv_message(recv_buf, message_out)){
-            ESP_LOGI(tag, "Received message: \"%s\"", message_out);
+        // /* check if server sent sync timestamp */
+        // int64_t server_ts_us;
+        // int sync_ok = recv_sync_header(sock, &server_ts_us);
+        // if (sync_ok == 1) {
+        //     int64_t now_us = esp_timer_get_time();
+        //     ESP_LOGI(tag, "SYNC received: server=%lld us, local=%lld us, diff=%lld us",
+        //             (long long)server_ts_us, (long long)now_us,
+        //             (long long)(server_ts_us - now_us));
+        //             synchOffsetUs = server_ts_us - now_us;
+        // }
 
-            if (strcmp(message_out, DISCONNECT_MSG) == 0) {
-                ESP_LOGW(tag, "Received disconnect message from server");
-                closeConnection(sock);
-            }
+
+        // every loop
+        static int64_t last_sync_q = 0;
+        int64_t now = esp_timer_get_time();
+        if (now - last_sync_q >= 1000000) { // 1 s is fine
+            send_sync_query();              // 9 bytes: 'Q' + t1
+            last_sync_q = now;
         }
+        handle_incoming_messages();      // read and process any 'R' replies
 
         vTaskDelay(pdMS_TO_TICKS(MIC_WAIT));
     }

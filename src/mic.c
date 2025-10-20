@@ -16,8 +16,9 @@
 QueueHandle_t audio_queue;
 volatile bool startRecording = false;
 static const char* tag = "mic";
-
-
+static int buffFullCount = 0;
+static int buffBackFill = 30;
+int64_t synchOffsetUs = 0;
 
 i2s_chan_handle_t mic_init_pdm_rx(void)
 {
@@ -68,7 +69,7 @@ void mic_task(void *args)
             size_t  samples = chunk.length / sizeof(chunk.samples[0]);
             double  dur_us  = (double)samples * (1e6 / (double)PDM_RX_FREQ_HZ);
             int64_t t_duration_us = chunk.length / PDM_RX_FREQ_HZ * 1e6;
-            chunk.timestamp = (int64_t)((double)t1 - dur_us);
+            chunk.timestamp = (int64_t)((double)t1 - dur_us) + synchOffsetUs;
 
             // chunk.timestamp = t1 - t_duration_us;
             #if LOG_AUDIO
@@ -91,25 +92,14 @@ void mic_task(void *args)
                 if (xQueueSend(audio_queue, &chunk, pdMS_TO_TICKS(100)) != pdPASS) {
                     // queue full: drop, but do not break contract
                     ESP_LOGW(tag, "Audio queue full, dropping full frame");
+                    buffFullCount++;
+
+                    if(buffFullCount > buffBackFill){
+                        ESP_LOGE(tag, "Audio queue consistently full, Restarting the module ...");
+                        esp_restart(); // restart the ESP32
+                    }
                 }
-                // // place timestamp data in the queue
-                // int sendTimeRes = 0;
-                // if(sendAudioRes)
-                //     sendTimeRes = xQueueSend(timestamp_queue, &t0, pdMS_TO_TICKS(10));
-                // if(sendTimeRes == pdPASS) {
-                //     #if LOG_AUDIO
-                //         ESP_LOGI(tag, "Sent timestamp %lld to the queue\n", t0);
-                     
-                //         int64_t read_chunk_ms = (t1 - t0) / 1000;
-                //         ESP_LOGI(tag, "chunk period: %lld ms", read_chunk_ms);
-                //         ESP_LOGI(tag, "Sent timestamp %lld to the queue\n", t0);
-                //     #endif 
-                // }
-                // else { // Timestamp data couldn't be placed in the queue
-                //     #if LOG_AUDIO
-                //         ESP_LOGW(tag, "Timestamp queue full, dropping frame");
-                //     #endif
-                // }
+
             }
             else{
                 ESP_LOGW(tag, "Failed to read data from I2S, Failure: %d", micFailedCount);
