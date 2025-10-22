@@ -6,6 +6,8 @@
 #include "mic.h"
 #include "main.h"
 #include "esp_timer.h"
+#include <math.h>
+
 
 static const char* tag = "tcp";
 static const int maxConn = 50;
@@ -42,6 +44,7 @@ typedef struct __attribute__((packed)){
     int64_t t3_us;
 } sync_reply_t; // receive sync reply
 
+static int64_t baseRttUs = INT64_MAX;
 
 /* synchronisation */
 void send_sync_query() {
@@ -72,8 +75,7 @@ static void handle_incoming_messages(void) {
     if (n <= 0) return;  // nothing to read right now
     ESP_LOGI(tag, "Received TCP msg type '%c' (0x%02x)", type, type);
 
-    double alpha = 0.9; // smoothing factor for offset update
-    double beta  = 1.0 - alpha;
+
     switch (type) {
         case 'R': {  // sync reply
             sync_reply_t r;
@@ -82,16 +84,29 @@ static void handle_incoming_messages(void) {
             if (rc == sizeof(r) - 1) {
                 int64_t t4  = esp_timer_get_time();
                 int64_t rtt = (t4 - r.t1_us) - (r.t3_us - r.t2_us);
+                
+                // double alpha = 0.9; // smoothing factor for offset update
+                // double beta  = 1.0 - alpha;
+                
+                // standard condition to update base RTT
+                if (rtt > 0 && rtt < baseRttUs) baseRttUs = rtt;  // update baseline
 
-                bool syncCondition = (rtt >= 0 && rtt < 500000); // ignore outliers > 500 ms
+                bool syncCondition = false;
+                if (rtt > 0 && (rtt - baseRttUs) < 2000) {        // accept only if within +2 ms of best RTT
+                    syncCondition = true;
+                }
+                
+                double quality = fmax(0.0, fmin(1.0, (double)baseRttUs / (double)rtt));
+                double alpha = 0.9 * (1.0 - quality);  // 0..0.9
+                double beta  = 1.0 - alpha;            // 0.1..1.0
 
-                if(doManSync || doSyncCounter < 10){ //change synch condition for first 10 syncs
-                    syncCondition = rtt >= 0; // accept all during manual sync or first 10 syncs
-                    alpha = 0.0;
-                    beta  = 1.0;
+                // loosen condition during manual sync or first 20 syncs
+                if (doManSync || doSyncCounter < 20) {
+                    syncCondition = (rtt >= 0);   // accept all early replies
+                    alpha = 0.2;                  // or 0.2 for slightly smoother start
+                    beta  = 0.8;                  // 0.8 if alpha=0.2
                     doManSync = false;
                 }
-
                 if (syncCondition) { // discard outliers > 500 ms
                     int64_t newOffset = ((r.t2_us - r.t1_us) + (r.t3_us - t4)) / 2;
                     offsetUs = (int64_t)(alpha * (double)offsetUs + beta * (double)newOffset);
@@ -273,7 +288,7 @@ void run_tcp_client_task(void *pvParameters){
         // every loop
         static int64_t last_sync_q = 0;
         int64_t now = esp_timer_get_time();
-        if (now - last_sync_q >= 1000000) { // 1 s is fine
+        if (now - last_sync_q >= 500000) { // 500 ms is fine   old:1000000
             send_sync_query();              // 9 bytes: 'Q' + t1
             last_sync_q = now;
         }
