@@ -29,7 +29,7 @@
 
 
 /* module id */
-#define MODULE_ID 11 //last octet of the IP address
+#define MODULE_ID 13 //last octet of the IP address
 
 /* tcp config */
 #define DEFAULT_HOST_IP "192.168.1.111"           //tcp config  server IP

@@ -17,15 +17,17 @@ static int connDone = 0;
 static int sock = -1;
 static bool doManSync = false;
 static int doSyncCounter = 0;
+static int seq = 0;
 
 // static char message_buf[128];
 // static int message_len = 0;
 static int64_t offsetUs = 0;
 
-typedef struct __attribute__((packed)){
-    uint8_t type;     // 'A'
-    int64_t ts_us;    // little-endian on ESP32
-} audio_hdr_t; //send audio header
+typedef struct __attribute__((packed)) {
+    uint8_t type;      // 'A'
+    int64_t ts_us;     // little-endian
+    int64_t seq;       // message number
+} audio_hdr_t; // send audio data header
 
 typedef struct __attribute__((packed)) {
     uint8_t type;   // 'M'
@@ -35,6 +37,7 @@ typedef struct __attribute__((packed)) {
 typedef struct __attribute__((packed)){
     uint8_t type;   // 'Q'
     int64_t t1_us;  // client send time
+    int64_t seq;       // message number
 } sync_query_t; // send sync query
 
 typedef struct __attribute__((packed)){
@@ -48,7 +51,7 @@ static int64_t baseRttUs = INT64_MAX;
 
 /* synchronisation */
 void send_sync_query() {
-    sync_query_t q = { 'Q', esp_timer_get_time() };
+    sync_query_t q = { 'Q', esp_timer_get_time() , seq++};
     send(sock, &q, sizeof(q), 0);
     // ESP_LOGI(tag, "SYNC query sent: t1=%lld us", (long long)q.t1_us);
 }
@@ -236,7 +239,7 @@ int send_audio_chunk(AudioChunk *chunk){
         #endif
         return 0;
     }
-    audio_hdr_t h = { 'A', chunk->timestamp };
+    audio_hdr_t h = { 'A', chunk->timestamp, chunk->messageNum };
 
     if (send_all(sock, &h, sizeof(h)) < 0 ||
         send_all(sock, chunk->samples, chunk->length) < 0) {
@@ -246,10 +249,8 @@ int send_audio_chunk(AudioChunk *chunk){
         return -1;
     }
 
-    #if LOG_AUDIO
-        ESP_LOGI(tag, "ts=%lld sent %d bytes", chunk->timestamp, chunk->length);
-    #endif
-    return chunk->length;
+
+    return (int)chunk->length;
 
     }
 

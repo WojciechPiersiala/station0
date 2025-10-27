@@ -19,6 +19,7 @@ static const char* tag = "mic";
 static int buffFullCount = 0;
 static int buffBackFill = 30;
 int64_t synchOffsetUs = 0;
+int64_t messageNum = 0;
 
 i2s_chan_handle_t mic_init_pdm_rx(void)
 {
@@ -70,6 +71,8 @@ void mic_task(void *args)
             double  dur_us  = (double)samples * (1e6 / (double)PDM_RX_FREQ_HZ);
             int64_t t_duration_us = chunk.length / PDM_RX_FREQ_HZ * 1e6;
             chunk.timestamp = (int64_t)((double)t1 - dur_us) + synchOffsetUs;
+            chunk.messageNum = messageNum;
+            messageNum++;
 
             // chunk.timestamp = t1 - t_duration_us;
             #if LOG_AUDIO

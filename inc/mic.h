@@ -14,6 +14,7 @@ typedef struct {
     int16_t samples[BUFF_SIZE / 2];  // 1024 samples = 2048 bytes
     size_t length;  // number of bytes actually used
     int64_t timestamp;  // timestamp of the audio chunk
+    int64_t messageNum;
     #if LOG_AUDIO
         int64_t read_time; 
     #endif
