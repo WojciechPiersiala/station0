@@ -53,7 +53,6 @@ static int64_t baseRttUs = INT64_MAX;
 void send_sync_query() {
     sync_query_t q = { 'Q', esp_timer_get_time() , seq++};
     send(sock, &q, sizeof(q), 0);
-    // ESP_LOGI(tag, "SYNC query sent: t1=%lld us", (long long)q.t1_us);
 }
 
 static int recv_all_exact(int s, void *buf, size_t len, int flags) {
@@ -76,7 +75,7 @@ static void handle_incoming_messages(void) {
     uint8_t type;
     int n = recv(sock, &type, 1, MSG_DONTWAIT);
     if (n <= 0) return;  // nothing to read right now
-    ESP_LOGI(tag, "Received TCP msg type '%c' (0x%02x)", type, type);
+    // ESP_LOGI(tag, "Received TCP msg type '%c' (0x%02x)", type, type);
 
 
     switch (type) {
@@ -87,17 +86,13 @@ static void handle_incoming_messages(void) {
             if (rc == sizeof(r) - 1) {
                 int64_t t4  = esp_timer_get_time();
                 int64_t rtt = (t4 - r.t1_us) - (r.t3_us - r.t2_us);
-                
-                // double alpha = 0.9; // smoothing factor for offset update
-                // double beta  = 1.0 - alpha;
-                
+
                 // standard condition to update base RTT
                 if (rtt > 0 && rtt < baseRttUs) baseRttUs = rtt;  // update baseline
 
                 bool syncCondition = false;
-                if (rtt > 0 && (rtt - baseRttUs) < 2000) {        // accept only if within +2 ms of best RTT
+                if (rtt > 0 && (rtt - baseRttUs) < 2000)        // accept only if within +2 ms of best RTT
                     syncCondition = true;
-                }
                 
                 double quality = fmax(0.0, fmin(1.0, (double)baseRttUs / (double)rtt));
                 double alpha = 0.9 * (1.0 - quality);  // 0..0.9
@@ -114,8 +109,11 @@ static void handle_incoming_messages(void) {
                     int64_t newOffset = ((r.t2_us - r.t1_us) + (r.t3_us - t4)) / 2;
                     offsetUs = (int64_t)(alpha * (double)offsetUs + beta * (double)newOffset);
                     synchOffsetUs = offsetUs;
-                    ESP_LOGI(tag, "SYNC 'R': rtt=%lld us, offset=%lld us",
-                             (long long)rtt, (long long)offsetUs);
+                    ESP_LOGI(tag,
+                        "SYNC 'R': rtt=%lld us, offset=%lld us, t1=%lld us, t2=%lld us, t3=%lld us, t4=%lld us",
+                        (long long)rtt, (long long)offsetUs,
+                        (long long)r.t1_us, (long long)r.t2_us, (long long)r.t3_us, (long long)t4);
+
                     doSyncCounter++;
                 }
             }
