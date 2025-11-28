@@ -10,7 +10,7 @@
 #include "display_text.h"
 #include <main.h>
 #include "display.h"
-// #include "esp_heap_caps.h"
+
 
 
 #define EXAMPLE_PIN_NUM_LCD_CS 5
@@ -18,14 +18,14 @@
 #define EXAMPLE_PIN_NUM_MOSI 15
 #define EXAMPLE_PIN_NUM_LCD_DC 14
 #define EXAMPLE_PIN_NUM_RST 12
-#define PIN_BL_EN                27         // U4.EN -> backlight power
+#define PIN_BL_EN                27         
 
 #define EXAMPLE_LCD_PIXEL_CLOCK_HZ 10000000
 #define EXAMPLE_LCD_CMD_BITS 8
 #define EXAMPLE_LCD_PARAM_BITS 8
 
-#define EXAMPLE_LCD_H_RES 135  // resolution
-#define EXAMPLE_LCD_V_RES 240  // resolution
+#define EXAMPLE_LCD_H_RES 135  
+#define EXAMPLE_LCD_V_RES 240  
 
 #define LCD_HOST SPI2_HOST 
 
@@ -48,7 +48,7 @@ static inline uint16_t rgb565(uint8_t r, uint8_t g, uint8_t b){
 }
 
 static void lcd_fill_color(esp_lcd_panel_handle_t panel, uint16_t color){
-    const int lines = 16; // <= 40 per your max_transfer_sz
+    const int lines = 16; 
     const int tile_px = EXAMPLE_LCD_H_RES * lines;
     uint16_t *tile = heap_caps_malloc(tile_px * sizeof(uint16_t), MALLOC_CAP_DMA);
     assert(tile);
@@ -70,15 +70,15 @@ void run_display_task(void *arg){
     spi_bus_config_t buscfg = {
         .sclk_io_num = EXAMPLE_PIN_NUM_SCLK,
         .mosi_io_num = EXAMPLE_PIN_NUM_MOSI,
-        .miso_io_num = -1, // not used
+        .miso_io_num = -1,
         .quadwp_io_num = -1,
         .quadhd_io_num = -1,
-        .max_transfer_sz = EXAMPLE_LCD_H_RES * 20 * sizeof(uint16_t), // transfer 20 lines of pixels (assume pixel is RGB565) at most in one SPI transaction
+        .max_transfer_sz = EXAMPLE_LCD_H_RES * 20 * sizeof(uint16_t), 
     };
-    ESP_ERROR_CHECK(spi_bus_initialize(LCD_HOST, &buscfg, SPI_DMA_CH_AUTO)); // Enable the DMA feature
+    ESP_ERROR_CHECK(spi_bus_initialize(LCD_HOST, &buscfg, SPI_DMA_CH_AUTO)); 
 
 
-    /* Allocate an LCD IO device handle from the SPI bus */
+    
     ESP_LOGI(tag, "Initialize LCD IO...");
     esp_lcd_panel_io_handle_t io_handle = NULL;
     esp_lcd_panel_io_spi_config_t io_config = {
@@ -90,10 +90,10 @@ void run_display_task(void *arg){
         .spi_mode = 0,
         .trans_queue_depth = 1
     };
-    // Attach the LCD to the SPI bus
+    
     ESP_ERROR_CHECK(esp_lcd_new_panel_io_spi((esp_lcd_spi_bus_handle_t)LCD_HOST, &io_config, &io_handle));
 
-    /* Install the LCD controller driver*/
+    
     ESP_LOGI(tag, "Install LCD controller driver");
     
     esp_lcd_panel_dev_config_t panel_config = {
@@ -101,24 +101,24 @@ void run_display_task(void *arg){
         .rgb_ele_order = LCD_RGB_ELEMENT_ORDER_BGR,
         .bits_per_pixel = 16,
     };
-    // Create LCD panel handle for ST7789, with the SPI IO device handle
+    
     ESP_ERROR_CHECK(esp_lcd_new_panel_st7789(io_handle, &panel_config, &panel_handle));
 
     ESP_LOGI(tag, "Initialize LCD");
     ESP_ERROR_CHECK(esp_lcd_panel_reset(panel_handle));
     ESP_ERROR_CHECK(esp_lcd_panel_init(panel_handle));
 
-    const uint8_t madctl = 0x08;       // BGR=1
+    const uint8_t madctl = 0x08;    
     ESP_ERROR_CHECK(esp_lcd_panel_io_tx_param(io_handle, 0x36, &madctl, 1));
-    const uint8_t colmod = 0x55;       // 16-bit (RGB565)
+    const uint8_t colmod = 0x55;     
     ESP_ERROR_CHECK(esp_lcd_panel_io_tx_param(io_handle, 0x3A, &colmod, 1));
 
     
-    esp_lcd_panel_set_gap(panel_handle, 52, 40);    // common for 240x135 // tmp
+    esp_lcd_panel_set_gap(panel_handle, 52, 40);   
     lcd_backlight_on();
     
     ESP_ERROR_CHECK(esp_lcd_panel_disp_on_off(panel_handle, true));
-    // draw
+    
     ESP_LOGI(tag, "Draw to LCD");
 
     lcd_fill_color(panel_handle, rgb565(255, 255, 255));
@@ -136,8 +136,7 @@ void run_display_task(void *arg){
 
 
     while(1){
-        // draw_text_5x7(panel_handle, 5, 20, "IP address:", rgb565(255,0,255), rgb565(255,255,255), 2);
-        // draw_text_5x7(panel_handle, 5, 40, text, rgb565(255,0,255), rgb565(255,255,255), 2);
+
 
         draw_text_5x7(panel_handle, 5, 20, "IP address:", rgb565(COLOR_OCT_1, COLOR_OCT_2, COLOR_OCT_3), rgb565(255,255,255), 2);
         draw_text_5x7(panel_handle, 5, 40, text, rgb565(COLOR_OCT_1, COLOR_OCT_2, COLOR_OCT_3), rgb565(255,255,255), 2);

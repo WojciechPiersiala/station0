@@ -107,7 +107,7 @@ static const uint8_t FONT5x7[96][5] = {
 static inline uint16_t rgb565(uint8_t r, uint8_t g, uint8_t b){
     return (uint16_t)(((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3));
 }
-static inline uint16_t be16(uint16_t v){ return (uint16_t)((v<<8) | (v>>8)); } // MSB first for ST7789
+static inline uint16_t be16(uint16_t v){ return (uint16_t)((v<<8) | (v>>8)); } 
 
 
 static uint16_t *s_char_buf = NULL;
@@ -121,11 +121,11 @@ static void draw_char_5x7(esp_lcd_panel_handle_t panel,
     if (c < 32 || c > 127) c = '?';
     const uint8_t *glyph = FONT5x7[c - 32];
 
-    const int cell_w = (5 + 1) * scale;   // 5 columns + 1 spacing
+    const int cell_w = (5 + 1) * scale;   
     const int h      = 7 * scale;
     const size_t need = (size_t)cell_w * h;
 
-    // grow persistent DMA buffer if needed
+    
     if (need > s_char_cap) {
         if (s_char_buf) heap_caps_free(s_char_buf);
         s_char_buf = heap_caps_malloc(need * sizeof(uint16_t), MALLOC_CAP_DMA);
@@ -133,13 +133,13 @@ static void draw_char_5x7(esp_lcd_panel_handle_t panel,
     }
     if (!s_char_buf) return;
 
-    uint16_t *buf = s_char_buf;           // <-- use persistent buffer
+    uint16_t *buf = s_char_buf;           
     const uint16_t fg = be16(fg565);
     const uint16_t bg = be16(bg565);
 
-    // build glyph into buf
+    
     for (int row = 0; row < 7; ++row) {
-        for (int col = 0; col < 6; ++col) { // 5 data cols + 1 space
+        for (int col = 0; col < 6; ++col) { 
             const int bit_on = (col < 5) ? ((glyph[col] >> row) & 0x1) : 0;
             const uint16_t color = bit_on ? fg : bg;
             for (int sy = 0; sy < scale; ++sy) {
@@ -149,9 +149,9 @@ static void draw_char_5x7(esp_lcd_panel_handle_t panel,
         }
     }
 
-    // this call may queue a DMA transfer; buffer must remain valid until it completes
+    
     esp_lcd_panel_draw_bitmap(panel, x, y, x + cell_w, y + h, buf);
-    // DO NOT free buf here
+    
 }
 
 

@@ -10,7 +10,7 @@
 #include "esp_netif.h"
 
 #include "main.h"
-const int ipaddr[4] = {192,168,1,MODULE_ID}; //station IP address
+const int ipaddr[4] = {192,168,1,MODULE_ID}; 
 static int s_retry_num = 0;
 static EventGroupHandle_t s_wifi_event_group;
 
@@ -38,7 +38,6 @@ static void event_handler(void* arg, esp_event_base_t event_base,
         ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
         ESP_LOGI(tag, "got ip:" IPSTR, IP2STR(&event->ip_info.ip));
         snprintf(ip_str, sizeof(ip_str), "%d.%d.%d.%d",IP2STR(&event->ip_info.ip));
-        // ESP_LOGI("debug printf", "%s", ip_str);
         s_retry_num = 0;
         xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
     }
@@ -84,14 +83,14 @@ void wifi_init_sta(void){
     };
 
     
-    // Set static IP
+
     esp_netif_ip_info_t ip_info;
-    // IP4_ADDR(&ip_info.ip,      192,168,1,50);   
+
     IP4_ADDR(&ip_info.ip, ipaddr[0], ipaddr[1], ipaddr[2], ipaddr[3]);
     IP4_ADDR(&ip_info.gw,      192,168,1,1);    
     IP4_ADDR(&ip_info.netmask, 255,255,255,0);  
-    esp_netif_dhcpc_stop (netif); // Stop DHCP client
-    esp_netif_set_ip_info(netif, &ip_info); // Set static IP
+    esp_netif_dhcpc_stop (netif); 
+    esp_netif_set_ip_info(netif, &ip_info);
 
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA) );
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config) );
@@ -99,16 +98,14 @@ void wifi_init_sta(void){
 
     ESP_LOGI(tag, "wifi_init_sta finished.");
 
-    /* Waiting until either the connection is established (WIFI_CONNECTED_BIT) or connection failed for the maximum
-     * number of re-tries (WIFI_FAIL_BIT). The bits are set by event_handler() (see above) */
+
     EventBits_t bits = xEventGroupWaitBits(s_wifi_event_group,
             WIFI_CONNECTED_BIT | WIFI_FAIL_BIT,
             pdFALSE,
             pdFALSE,
             portMAX_DELAY);
 
-    /* xEventGroupWaitBits() returns the bits before the call returned, hence we can test which event actually
-     * happened. */
+
     if (bits & WIFI_CONNECTED_BIT) {
         ESP_LOGI(tag, "connected to ap SSID:%s password: %s",
                  ESP_WIFI_SSID, ESP_WIFI_PASS);

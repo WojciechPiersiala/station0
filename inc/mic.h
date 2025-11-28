@@ -26,6 +26,6 @@ extern volatile bool startRecording;
 
 /* PDM funcitons */
 void mic_task(void *args);
-// i2s_chan_handle_t mic_init_pdm_rx(void);
+
 
 

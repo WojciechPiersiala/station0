@@ -2,13 +2,16 @@
 
 
 /* wifi config */
-#define WIFI_NETWORK 1
+#define WIFI_NETWORK 3
 #if WIFI_NETWORK == 1
     #define ESP_WIFI_SSID "INEA-54D4_2.4G"
     #define ESP_WIFI_PASS "KqkmRCph"
 #elif WIFI_NETWORK == 2
     #define ESP_WIFI_SSID "TCL-5J3J-2.4GHz"
     #define ESP_WIFI_PASS "G6hgv9Tq396k"
+#elif WIFI_NETWORK == 3
+    #define ESP_WIFI_SSID "TestWifi"
+    #define ESP_WIFI_PASS "test12345"
 #else
     #error "Invalid WIFI_NETWORK selected! Please define WIFI_NETWORK as 1 or 2."
 #endif
@@ -29,7 +32,7 @@
 
 
 /* module id */
-#define MODULE_ID 13 //last octet of the IP address
+#define MODULE_ID 12 //last octet of the IP address
 
 /* tcp config */
 #define DEFAULT_HOST_IP "192.168.1.111"           //tcp config  server IP

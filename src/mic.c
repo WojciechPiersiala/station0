@@ -23,17 +23,17 @@ int64_t messageNum = 0;
 
 i2s_chan_handle_t mic_init_pdm_rx(void)
 {
-    i2s_chan_handle_t rx_chan;        // I2S rx channel handler
-    /* Setp 1: Determine the I2S channel configuration and allocate RX channel only */
+    i2s_chan_handle_t rx_chan;  
+    
     ESP_LOGI(tag, "Adding new channel ...");
     i2s_chan_config_t rx_chan_cfg = I2S_CHANNEL_DEFAULT_CONFIG(I2S_NUM_AUTO, I2S_ROLE_MASTER);
     ESP_ERROR_CHECK(i2s_new_channel(&rx_chan_cfg, NULL, &rx_chan));
 
-    /* Step 2: Setting the configurations of PDM RX mode and initialize the RX channel */  
+    
     ESP_LOGI(tag, "Preparing PDM configuration ...");
     i2s_pdm_rx_config_t pdm_rx_cfg = {
         .clk_cfg = I2S_PDM_RX_CLK_DEFAULT_CONFIG(PDM_RX_FREQ_HZ),
-        /* The data bit-width of PDM mode is fixed to 16 */
+    
         .slot_cfg = I2S_PDM_RX_SLOT_DEFAULT_CONFIG(I2S_DATA_BIT_WIDTH_16BIT, I2S_SLOT_MODE_MONO),
         .gpio_cfg = {
             .clk = PDM_RX_CLK_IO,
@@ -45,7 +45,7 @@ i2s_chan_handle_t mic_init_pdm_rx(void)
     };
     ESP_ERROR_CHECK(i2s_channel_init_pdm_rx_mode(rx_chan, &pdm_rx_cfg));
 
-    /* Step 3: Enable the rx channels before reading data */
+    
     ESP_ERROR_CHECK(i2s_channel_enable(rx_chan));
     return rx_chan;
 }
@@ -58,48 +58,46 @@ void mic_task(void *args)
 
     AudioChunk chunk;
     
-    xQueueReset(audio_queue); // clear the queue before starting recording
+    xQueueReset(audio_queue); 
     int micFailedCount = 0;
     while (1) {
         if(startRecording){
-            /* Read i2s data */
-            // int64_t t0 = esp_timer_get_time();
+
             esp_err_t err = i2s_channel_read(rx_chan, chunk.samples, sizeof(chunk.samples), &chunk.length, portMAX_DELAY);
             int64_t t1 = esp_timer_get_time();
 
             size_t  samples = chunk.length / sizeof(chunk.samples[0]);
             double  dur_us  = (double)samples * (1e6 / (double)PDM_RX_FREQ_HZ);
-            int64_t t_duration_us = chunk.length / PDM_RX_FREQ_HZ * 1e6;
+            // int64_t t_duration_us = chunk.length / PDM_RX_FREQ_HZ * 1e6;
             chunk.timestamp = (int64_t)((double)t1 - dur_us) + synchOffsetUs;
             chunk.messageNum = messageNum;
             messageNum++;
 
-            // chunk.timestamp = t1 - t_duration_us;
             #if LOG_AUDIO
                 ESP_LOGI("mic", "read %u samples in %lld us -> %.2f kHz", (unsigned)samples, (long long)(dur_us), 1e3 * samples / (double)(dur_us));
                 ESP_LOGI(tag, "Audio chunk timestamp: %lld", chunk.timestamp);
-                // int64_t t1 = esp_timer_get_time();
-                chunk.read_time = t1 - t0;  //tmp
+                
+                chunk.read_time = t1 - t0; 
             #endif
             
             
 
             if(err == ESP_OK){
-                // warning if the audio data is not full
+                
                 if(chunk.length != sizeof(chunk.samples)){
                     ESP_LOGW(tag, "Partial chunk received: %d bytes", chunk.length);
-                    continue; // skip this chunk
+                    continue; 
                 }
                 
-                // place the audio data in the queue
+                
                 if (xQueueSend(audio_queue, &chunk, pdMS_TO_TICKS(100)) != pdPASS) {
-                    // queue full: drop, but do not break contract
+                    
                     ESP_LOGW(tag, "Audio queue full, dropping full frame");
                     buffFullCount++;
 
                     if(buffFullCount > buffBackFill){
                         ESP_LOGE(tag, "Audio queue consistently full, Restarting the module ...");
-                        esp_restart(); // restart the ESP32
+                        esp_restart();
                     }
                 }
 
@@ -109,14 +107,14 @@ void mic_task(void *args)
                 micFailedCount++;
                 if(micFailedCount > 10) {    
                     ESP_LOGE(tag, "Too many I2S read failures, Restarting the module ...");
-                    esp_restart(); // restart the ESP32
+                    esp_restart(); 
                 }
             }
         }
         else{
-            vTaskDelay(pdMS_TO_TICKS(10)); // delay the task when not recording
+            vTaskDelay(pdMS_TO_TICKS(10));
         }
     }
-    // free(r_buf);
+
     vTaskDelete(NULL);
 }

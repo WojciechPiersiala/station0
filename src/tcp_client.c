@@ -19,14 +19,13 @@ static bool doManSync = false;
 static int doSyncCounter = 0;
 static int seq = 0;
 
-// static char message_buf[128];
-// static int message_len = 0;
+
 static int64_t offsetUs = 0;
 
 typedef struct __attribute__((packed)) {
     uint8_t type;      // 'A'
-    int64_t ts_us;     // little-endian
-    int64_t seq;       // message number
+    int64_t ts_us;     
+    int64_t seq;       
 } audio_hdr_t; // send audio data header
 
 typedef struct __attribute__((packed)) {
@@ -36,8 +35,8 @@ typedef struct __attribute__((packed)) {
 
 typedef struct __attribute__((packed)){
     uint8_t type;   // 'Q'
-    int64_t t1_us;  // client send time
-    int64_t seq;       // message number
+    int64_t t1_us;  
+    int64_t seq;    
 } sync_query_t; // send sync query
 
 typedef struct __attribute__((packed)){
@@ -49,7 +48,7 @@ typedef struct __attribute__((packed)){
 
 static int64_t baseRttUs = INT64_MAX;
 
-/* synchronisation */
+
 void send_sync_query() {
     sync_query_t q = { 'Q', esp_timer_get_time() , seq++};
     send(sock, &q, sizeof(q), 0);
@@ -60,10 +59,10 @@ static int recv_all_exact(int s, void *buf, size_t len, int flags) {
     size_t got = 0;
     while (got < len) {
         int n = recv(s, p + got, len - got, flags);
-        if (n == 0)  return 0;                  // peer closed
+        if (n == 0)  return 0;                  
         if (n < 0) {
-            if (errno == EAGAIN || errno == EWOULDBLOCK) return -2; // would block
-            return -1;                         // real error
+            if (errno == EAGAIN || errno == EWOULDBLOCK) return -2; 
+            return -1;                       
         }
         got += n;
     }
@@ -74,12 +73,12 @@ static int recv_all_exact(int s, void *buf, size_t len, int flags) {
 static void handle_incoming_messages(void) {
     uint8_t type;
     int n = recv(sock, &type, 1, MSG_DONTWAIT);
-    if (n <= 0) return;  // nothing to read right now
-    // ESP_LOGI(tag, "Received TCP msg type '%c' (0x%02x)", type, type);
+    if (n <= 0) return;
+    
 
 
     switch (type) {
-        case 'R': {  // sync reply
+        case 'R': {  
             sync_reply_t r;
             r.type = 'R';
             int rc = recv_all_exact(sock, ((uint8_t*)&r) + 1, sizeof(r) - 1, 0);
@@ -87,25 +86,25 @@ static void handle_incoming_messages(void) {
                 int64_t t4  = esp_timer_get_time();
                 int64_t rtt = (t4 - r.t1_us) - (r.t3_us - r.t2_us);
 
-                // standard condition to update base RTT
-                if (rtt > 0 && rtt < baseRttUs) baseRttUs = rtt;  // update baseline
+               
+                if (rtt > 0 && rtt < baseRttUs) baseRttUs = rtt;  
 
                 bool syncCondition = false;
-                if (rtt > 0 && (rtt - baseRttUs) < 2000)        // accept only if within +2 ms of best RTT
+                if (rtt > 0 && (rtt - baseRttUs) < 2000)   
                     syncCondition = true;
                 
                 double quality = fmax(0.0, fmin(1.0, (double)baseRttUs / (double)rtt));
-                double alpha = 0.9 * (1.0 - quality);  // 0..0.9
-                double beta  = 1.0 - alpha;            // 0.1..1.0
+                double alpha = 0.9 * (1.0 - quality);  
+                double beta  = 1.0 - alpha;            
 
-                // loosen condition during manual sync or first 20 syncs
+                
                 if (doManSync || doSyncCounter < 20) {
-                    syncCondition = (rtt >= 0);   // accept all early replies
-                    alpha = 0.2;                  // or 0.2 for slightly smoother start
-                    beta  = 0.8;                  // 0.8 if alpha=0.2
+                    syncCondition = (rtt >= 0);   
+                    alpha = 0.2;                  
+                    beta  = 0.8;                  
                     doManSync = false;
                 }
-                if (syncCondition) { // discard outliers > 500 ms
+                if (syncCondition) { 
                     int64_t newOffset = ((r.t2_us - r.t1_us) + (r.t3_us - t4)) / 2;
                     offsetUs = (int64_t)(alpha * (double)offsetUs + beta * (double)newOffset);
                     synchOffsetUs = offsetUs;
@@ -120,7 +119,7 @@ static void handle_incoming_messages(void) {
             break;
         }
 
-        case 'M': {  // manual timestamp message from server
+        case 'M': { 
             sync_hdr_t m;
             m.type = 'M';
             int rc = recv_all_exact(sock, ((uint8_t*)&m) + 1, sizeof(m) - 1, 0);
@@ -137,23 +136,12 @@ static void handle_incoming_messages(void) {
         }
 
         default:
-            // drain unknown byte
+            
             ESP_LOGW(tag, "Unknown TCP msg type '%c' (0x%02x)", type, type);
             break;
     }
 }
 
-
-// static int recv_sync_header(int s, int64_t *ts_out)
-// {
-//     sync_hdr_t h;
-//     int n = recv(s, &h, sizeof(h), MSG_DONTWAIT);
-//     if (n == sizeof(h) && h.type == 'S') {
-//         *ts_out = h.ts_us;
-//         return 1; // success
-//     }
-//     return 0; // no data yet or not full header
-// }
 
 
 
@@ -176,7 +164,7 @@ int closeConnection(int sock){
 
 
 void init_tcp(){
-    /* init */
+
     if (audio_queue == NULL) {
         ESP_LOGE("main", "Failed to connect to audio queue!");
         vTaskDelete(NULL);
@@ -255,43 +243,27 @@ int send_audio_chunk(AudioChunk *chunk){
 
 
 
-/* TCP client task */
 void run_tcp_client_task(void *pvParameters){
     init_tcp();
 
     AudioChunk chunk;
-    // char recv_buf[128];
-    // char message_out[128];
+
 
     while (1) {
-        /* send audio chunk*/
+
         int res = send_audio_chunk(&chunk);
-        if(res < 0){ // failure
-            closeConnection(sock);  // close connection
+        if(res < 0){ 
+            closeConnection(sock);  
         }
 
         
-
-        // /* check if server sent sync timestamp */
-        // int64_t server_ts_us;
-        // int sync_ok = recv_sync_header(sock, &server_ts_us);
-        // if (sync_ok == 1) {
-        //     int64_t now_us = esp_timer_get_time();
-        //     ESP_LOGI(tag, "SYNC received: server=%lld us, local=%lld us, diff=%lld us",
-        //             (long long)server_ts_us, (long long)now_us,
-        //             (long long)(server_ts_us - now_us));
-        //             synchOffsetUs = server_ts_us - now_us;
-        // }
-
-
-        // every loop
         static int64_t last_sync_q = 0;
         int64_t now = esp_timer_get_time();
-        if (now - last_sync_q >= 500000) { // 500 ms is fine   old:1000000
-            send_sync_query();              // 9 bytes: 'Q' + t1
+        if (now - last_sync_q >= 500000) { 
+            send_sync_query();            
             last_sync_q = now;
         }
-        handle_incoming_messages();      // read and process any 'R' replies
+        handle_incoming_messages();     
 
         vTaskDelay(pdMS_TO_TICKS(MIC_WAIT));
     }
@@ -302,12 +274,11 @@ void run_tcp_client_task(void *pvParameters){
 
 
 void try2connect_tcp_task(){
-        while(1){ //
-        // ESP_LOGI("main", "startTcp: %d", startTcp);
+        while(1){ 
         if(startTcp){
             ESP_LOGI("main", "Restarting TCP client task ...");
             vTaskDelay(pdMS_TO_TICKS(5000));
-            // xTaskCreate(run_tcp_client_task, "tcp_client", TCP_STACK_SIZE, NULL, 5, NULL);
+
             xTaskCreatePinnedToCore(run_tcp_client_task, "tcp_client", TCP_STACK_SIZE, NULL, PRI_HIGH, NULL, CORE_APP);
             startTcp = false;
         }
