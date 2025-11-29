@@ -30,7 +30,7 @@
 
 /* tcp config */
 /* module id */
-#define MODULE_ID 13 // numer id klienta, ostatni oktet ip
+#define MODULE_ID 12 // numer id klienta, ostatni oktet ip
 
 #define DEFAULT_HOST_IP     "192.168.1.3"  // adres ip serwera 
 #define IPADDR_OCTET_0    192                 // adres ip klienta
