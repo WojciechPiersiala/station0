@@ -127,7 +127,7 @@ void run_display_task(void *arg){
     esp_lcd_panel_mirror(panel_handle, true, false);
     
     char *text = malloc(50);
-    sprintf(text, "%d.%d.%d.[%d]\n", 192, 168, 1, MODULE_ID);
+    sprintf(text, "%d.%d.%d.[%d]\n", IPADDR_OCTET_0, IPADDR_OCTET_1, IPADDR_OCTET_2, IPADDR_OCTET_3);
 
 
 

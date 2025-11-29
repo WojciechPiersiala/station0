@@ -10,12 +10,14 @@
 #include "esp_netif.h"
 
 #include "main.h"
-const int ipaddr[4] = {192,168,1,MODULE_ID}; 
+
 static int s_retry_num = 0;
 static EventGroupHandle_t s_wifi_event_group;
 
 static char ip_str[16];
 static const char* tag = "wifi";
+
+
 
 const char* get_ip_str(void){
     return ip_str;
@@ -86,9 +88,10 @@ void wifi_init_sta(void){
 
     esp_netif_ip_info_t ip_info;
 
-    IP4_ADDR(&ip_info.ip, ipaddr[0], ipaddr[1], ipaddr[2], ipaddr[3]);
-    IP4_ADDR(&ip_info.gw,      192,168,1,1);    
-    IP4_ADDR(&ip_info.netmask, 255,255,255,0);  
+    IP4_ADDR(&ip_info.ip, IPADDR_OCTET_0, IPADDR_OCTET_1, IPADDR_OCTET_2, IPADDR_OCTET_3);
+    IP4_ADDR(&ip_info.gw, IPGATE_OCTET_0, IPGATE_OCTET_1, IPGATE_OCTET_2, IPGATE_OCTET_3);     
+    IP4_ADDR(&ip_info.netmask, IPMASK_OCTET_0, IPMASK_OCTET_1, IPMASK_OCTET_2, IPMASK_OCTET_3);
+    
     esp_netif_dhcpc_stop (netif); 
     esp_netif_set_ip_info(netif, &ip_info);
 

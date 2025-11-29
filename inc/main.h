@@ -2,7 +2,7 @@
 
 
 /* wifi config */
-#define WIFI_NETWORK 3
+#define WIFI_NETWORK 2
 #if WIFI_NETWORK == 1
     #define ESP_WIFI_SSID "INEA-54D4_2.4G"
     #define ESP_WIFI_PASS "KqkmRCph"
@@ -10,12 +10,12 @@
     #define ESP_WIFI_SSID "TCL-5J3J-2.4GHz"
     #define ESP_WIFI_PASS "G6hgv9Tq396k"
 #elif WIFI_NETWORK == 3
-    #define ESP_WIFI_SSID "TestWifi"
+    #define ESP_WIFI_SSID "TestWiFi"
     #define ESP_WIFI_PASS "test12345"
 #else
     #error "Invalid WIFI_NETWORK selected! Please define WIFI_NETWORK as 1 or 2."
 #endif
-
+        
 /* Use separate cores and different priorites*/
 //cores 
 #define CORE_APP 0   // Wifi
@@ -28,14 +28,29 @@
 #define PRI_RT     12
 
 
-
-
-
-/* module id */
-#define MODULE_ID 12 //last octet of the IP address
-
 /* tcp config */
-#define DEFAULT_HOST_IP "192.168.1.111"           //tcp config  server IP
+/* module id */
+#define MODULE_ID 13 // numer id klienta, ostatni oktet ip
+
+#define DEFAULT_HOST_IP     "192.168.1.3"  // adres ip serwera 
+#define IPADDR_OCTET_0    192                 // adres ip klienta
+#define IPADDR_OCTET_1    168
+#define IPADDR_OCTET_2    1
+#define IPADDR_OCTET_3    MODULE_ID
+
+// netmask
+#define IPMASK_OCTET_0    255
+#define IPMASK_OCTET_1    255
+#define IPMASK_OCTET_2    255
+#define IPMASK_OCTET_3    0
+
+// gateway
+#define IPGATE_OCTET_0    IPADDR_OCTET_0
+#define IPGATE_OCTET_1    IPADDR_OCTET_1
+#define IPGATE_OCTET_2    IPADDR_OCTET_2
+#define IPGATE_OCTET_3    1
+
+
 #define PORT 5050                               //tcp cofnig server port
 #define TCP_STACK_SIZE 12288 /*8192*/            // tcp config stack size for tcp client task and mic task    16384
 #define TCP_HEADER_LEN 8                        //tcp header added to message

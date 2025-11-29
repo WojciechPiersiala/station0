@@ -108,10 +108,10 @@ static void handle_incoming_messages(void) {
                     int64_t newOffset = ((r.t2_us - r.t1_us) + (r.t3_us - t4)) / 2;
                     offsetUs = (int64_t)(alpha * (double)offsetUs + beta * (double)newOffset);
                     synchOffsetUs = offsetUs;
-                    ESP_LOGI(tag,
-                        "SYNC 'R': rtt=%lld us, offset=%lld us, t1=%lld us, t2=%lld us, t3=%lld us, t4=%lld us",
-                        (long long)rtt, (long long)offsetUs,
-                        (long long)r.t1_us, (long long)r.t2_us, (long long)r.t3_us, (long long)t4);
+                    // ESP_LOGI(tag,
+                    //     "SYNC 'R': rtt=%lld us, offset=%lld us, t1=%lld us, t2=%lld us, t3=%lld us, t4=%lld us",
+                    //     (long long)rtt, (long long)offsetUs,
+                    //     (long long)r.t1_us, (long long)r.t2_us, (long long)r.t3_us, (long long)t4);
 
                     doSyncCounter++;
                 }
